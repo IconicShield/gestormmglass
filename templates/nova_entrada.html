@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block content %}
+    <h1>Nova Entrada</h1>
+    <hr>
+    <form method="post" enctype="multipart/form-data">
+        <div class="row">
+
+            <div class="col-md-6">
+                
+                <div class="form-group">
+                    <label>Tipo de Entrada</label>
+                    <div class="btn-group btn-group-toggle d-block" data-toggle="buttons">
+                        <label class="btn btn-outline-secondary w-50">
+                            <input type="radio" name="tipo" value="Orçamento" required> <i class="fas fa-file-invoice-dollar mr-1"></i> Orçamento
+                        </label>
+                        <label class="btn btn-outline-secondary w-50">
+                            <input type="radio" name="tipo" value="Pedido"> <i class="fas fa-box-open mr-1"></i> Pedido
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="numero_pedido">N° da Entrada</label>
+                    <input type="text" name="numero_pedido" id="numero_pedido" class="form-control" value="{{ form_data.numero_pedido }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="cliente">Cliente</label>
+                    <input type="text" name="cliente" id="cliente" class="form-control" value="{{ form_data.cliente }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="status">Status</label>
+                    <select name="status" id="status" class="form-control">
+                        <option value="Não iniciado">Não iniciado</option>
+                        <option value="Em andamento">Em andamento</option>
+                        <option value="Concluído">Concluído</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="descricao">Descrição</label>
+                    <textarea name="descricao" id="descricao" class="form-control" required rows="4">{{ form_data.descricao }}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="observacoes">Observações (opcional)</label>
+                    <textarea name="observacoes" id="observacoes" class="form-control" rows="4">{{ form_data.observacoes }}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="anexo">Anexo (opcional)</label>
+                    <input type="file" name="anexo" id="anexo" class="form-control-file">
+                </div>
+            </div>
+        </div>
+
+        <hr>
+        <button type="submit" class="btn btn-success"><i class="fas fa-check"></i> Salvar Entrada</button>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancelar</a>
+    </form>
+{% endblock %}

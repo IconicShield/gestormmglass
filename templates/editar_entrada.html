@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block content %}
+    <h1>Editar Entrada #{{ entrada.numero_pedido }}</h1>
+    <hr>
+    <form method="post" enctype="multipart/form-data">
+        <div class="row">
+            <div class="col-md-6">
+
+                <div class="form-group">
+                    <label>Tipo de Entrada</label>
+                    <div class="btn-group btn-group-toggle d-block" data-toggle="buttons">
+                        <label class="btn btn-outline-secondary w-50 {% if entrada.tipo == 'Orçamento' %}active{% endif %}">
+                            <input type="radio" name="tipo" value="Orçamento" required {% if entrada.tipo == 'Orçamento' %}checked{% endif %}> <i class="fas fa-file-invoice-dollar mr-1"></i> Orçamento
+                        </label>
+                        <label class="btn btn-outline-secondary w-50 {% if entrada.tipo == 'Pedido' %}active{% endif %}">
+                            <input type="radio" name="tipo" value="Pedido" {% if entrada.tipo == 'Pedido' %}checked{% endif %}> <i class="fas fa-box-open mr-1"></i> Pedido
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="numero_pedido">N° da Entrada</label>
+                    <input type="text" name="numero_pedido" id="numero_pedido" class="form-control" value="{{ entrada.numero_pedido }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="cliente">Cliente</label>
+                    <input type="text" name="cliente" id="cliente" class="form-control" value="{{ entrada.cliente }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="status">Status</label>
+                    <select name="status" id="status" class="form-control">
+                        <option value="Não iniciado" {% if entrada.status == 'Não iniciado' %}selected{% endif %}>Não iniciado</option>
+                        <option value="Em andamento" {% if entrada.status == 'Em andamento' %}selected{% endif %}>Em andamento</option>
+                        <option value="Concluído" {% if entrada.status == 'Concluído' %}selected{% endif %}>Concluído</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="descricao">Descrição</label>
+                    <textarea name="descricao" id="descricao" class="form-control" required rows="4">{{ entrada.descricao }}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="observacoes">Observações</label>
+                    <textarea name="observacoes" id="observacoes" class="form-control" rows="4">{{ entrada.observacoes or '' }}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Anexo</label>
+                    {% if entrada.anexo %}
+                    <p class="small">Anexo atual: <a href="{{ url_for('uploaded_file', filename=entrada.anexo) }}" target="_blank">{{ entrada.anexo }}</a></p>
+                    {% else %}
+                    <p class="text-muted small">Nenhum anexo encontrado.</p>
+                    {% endif %}
+                    <label for="anexo" class="small">Substituir anexo (opcional):</label>
+                    <input type="file" name="anexo" id="anexo" class="form-control-file">
+                </div>
+            </div>
+        </div>
+        
+        <hr>
+        <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Salvar Alterações</button>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancelar</a>
+    </form>
+{% endblock %}

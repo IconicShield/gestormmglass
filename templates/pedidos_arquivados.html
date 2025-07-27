@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Pedidos Arquivados</h1>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Voltar ao Painel Principal</a>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('pedidos_arquivados') }}">
+                <div class="form-row align-items-end">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="q">Buscar (N°, Cliente, Descrição)</label>
+                            <input type="text" class="form-control" id="q" name="q" value="{{ search_query }}">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="status">Filtrar por Status</label>
+                            <select id="status" name="status" class="form-control">
+                                <option value="">Todos</option>
+                                <option value="Não iniciado" {% if selected_status == 'Não iniciado' %}selected{% endif %}>Não iniciado</option>
+                                <option value="Em andamento" {% if selected_status == 'Em andamento' %}selected{% endif %}>Em andamento</option>
+                                <option value="Concluído" {% if selected_status == 'Concluído' %}selected{% endif %}>Concluído</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-filter"></i> Filtrar</button>
+                            <a href="{{ url_for('pedidos_arquivados') }}" class="btn btn-secondary btn-block mt-2">Limpar</a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    <table class="table table-hover table-sm shadow-sm rounded table-uppercase">
+        <thead class="thead-light">
+            <tr>
+                <th>Data</th>
+                <th>N°</th>
+                <th>Cliente</th>
+                <th>Status</th>
+                <th>Descrição</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entrada in pedidos %}
+            <tr>
+                <td>{{ entrada.data_registro.strftime('%d/%m/%Y') }}</td>
+                <td>{{ entrada.numero_pedido }}</td>
+                <td>{{ entrada.cliente }}</td>
+                <td>
+                    {% set status_color = 'secondary' %}
+                    {% if entrada.status == 'Concluído' %}{% set status_color = 'success' %}
+                    {% elif entrada.status == 'Em andamento' %}{% set status_color = 'warning' %}
+                    {% elif entrada.status == 'Não iniciado' %}{% set status_color = 'danger' %}{% endif %}
+                    <span class="badge badge-{{ status_color }}">{{ entrada.status }}</span>
+                </td>
+                <td>{{ entrada.descricao | truncate(50) }}</td>
+                <td>
+                    <form action="{{ url_for('desarquivar_entrada', id=entrada.id) }}" method="post" style="display: inline;">
+                        <button type="submit" class="btn btn-sm btn-info" title="Restaurar Pedido">
+                            <i class="fas fa-undo"></i>
+                        </button>
+                    </form>
+                     <form action="{{ url_for('excluir_entrada', id=entrada.id) }}" method="post" style="display: inline;" onsubmit="return confirm('ATENÇÃO: Exclusão permanente! Tem a certeza?');">
+                        <button type="submit" class="btn btn-sm btn-danger" title="Excluir Permanentemente">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center">Nenhum pedido arquivado encontrado.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

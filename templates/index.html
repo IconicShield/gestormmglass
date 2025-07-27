@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Painel de Controlo</h1>
+        <div>
+            <a href="{{ url_for('pedidos_arquivados') }}" class="btn btn-outline-secondary"><i class="fas fa-archive"></i> Ver Arquivados</a>
+            <a href="{{ url_for('nova_entrada') }}" class="btn btn-primary shadow-sm"><i class="fas fa-plus fa-sm"></i> Nova Entrada</a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4"><div class="card border-left-danger shadow h-100 py-2"><div class="card-body"><div class="row no-gutters align-items-center"><div class="col mr-2"><div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Pedidos Não Iniciados</div><div id="dashboard-nao-iniciados" class="h5 mb-0 font-weight-bold text-gray-800">{{ dashboard.pedidos_nao_iniciados }}</div></div><div class="col-auto"><i class="fas fa-hourglass-start fa-2x text-gray-300"></i></div></div></div></div></div>
+        <div class="col-xl-3 col-md-6 mb-4"><div class="card border-left-warning shadow h-100 py-2"><div class="card-body"><div class="row no-gutters align-items-center"><div class="col mr-2"><div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Pedidos em Andamento</div><div id="dashboard-em-andamento" class="h5 mb-0 font-weight-bold text-gray-800">{{ dashboard.pedidos_em_andamento }}</div></div><div class="col-auto"><i class="fas fa-tasks fa-2x text-gray-300"></i></div></div></div></div></div>
+        <div class="col-xl-3 col-md-6 mb-4"><div class="card border-left-success shadow h-100 py-2"><div class="card-body"><div class="row no-gutters align-items-center"><div class="col mr-2"><div class="text-xs font-weight-bold text-success text-uppercase mb-1">Pedidos Concluídos</div><div id="dashboard-concluidos" class="h5 mb-0 font-weight-bold text-gray-800">{{ dashboard.pedidos_concluidos }}</div></div><div class="col-auto"><i class="fas fa-check-circle fa-2x text-gray-300"></i></div></div></div></div></div>
+        <div class="col-xl-3 col-md-6 mb-4"><div class="card border-left-info shadow h-100 py-2"><div class="card-body"><div class="row no-gutters align-items-center"><div class="col mr-2"><div class="text-xs font-weight-bold text-info text-uppercase mb-1">Total de Orçamentos</div><div id="dashboard-total-orcamentos" class="h5 mb-0 font-weight-bold text-gray-800">{{ dashboard.total_orcamentos }}</div></div><div class="col-auto"><i class="fas fa-file-invoice fa-2x text-gray-300"></i></div></div></div></div></div>
+    </div>
+    
+    <div class="card shadow mb-4">
+        <div class="card-body"><form method="GET" action="{{ url_for('index') }}"><div class="form-row align-items-end"><div class="col-md-6"><div class="form-group"><label for="q">Buscar (N°, Cliente, Descrição)</label><input type="text" class="form-control" id="q" name="q" value="{{ search_query }}"></div></div><div class="col-md-4"><div class="form-group"><label for="status">Filtrar por Status</label><select id="status" name="status" class="form-control"><option value="">Todos</option><option value="Não iniciado" {% if selected_status == 'Não iniciado' %}selected{% endif %}>Não iniciado</option><option value="Em andamento" {% if selected_status == 'Em andamento' %}selected{% endif %}>Em andamento</option><option value="Concluído" {% if selected_status == 'Concluído' %}selected{% endif %}>Concluído</option></select></div></div><div class="col-md-2"><div class="form-group"><button type="submit" class="btn btn-primary btn-block"><i class="fas fa-filter"></i> Filtrar</button><a href="{{ url_for('index') }}" class="btn btn-secondary btn-block mt-2">Limpar</a></div></div></div></form></div>
+    </div>
+
+    <h3><i class="fas fa-box-open"></i> Pedidos</h3>
+    <table class="table table-hover table-sm shadow-sm rounded table-uppercase">
+        <thead class="thead-light"><tr><th>Data</th><th>N°</th><th>Cliente</th><th>Status</th><th>Descrição</th><th>Anexos</th><th>Observações</th><th>Ações</th></tr></thead>
+        <tbody>
+            {% for entrada in pedidos %}
+            <tr>
+                <td>{{ entrada.data_registro.strftime('%d/%m/%Y') }}</td>
+                <td>{{ entrada.numero_pedido }}</td>
+                <td>{{ entrada.cliente }}</td>
+                <td>{% set status_color = 'secondary' %}{% if entrada.status == 'Concluído' %}{% set status_color = 'success' %}{% elif entrada.status == 'Em andamento' %}{% set status_color = 'warning' %}{% elif entrada.status == 'Não iniciado' %}{% set status_color = 'danger' %}{% endif %}<div class="dropdown"><button class="btn btn-{{ status_color }} btn-sm dropdown-toggle" type="button" id="status-btn-{{ entrada.id }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ entrada.status }}</button><div class="dropdown-menu" aria-labelledby="status-btn-{{ entrada.id }}"><a class="dropdown-item status-option" href="#" data-id="{{ entrada.id }}" data-status="Não iniciado">Não iniciado</a><a class="dropdown-item status-option" href="#" data-id="{{ entrada.id }}" data-status="Em andamento">Em andamento</a><a class="dropdown-item status-option" href="#" data-id="{{ entrada.id }}" data-status="Concluído">Concluído</a></div></div></td>
+                <td>{{ entrada.descricao | truncate(40) }}</td>
+                <td>
+                    {% if entrada.anexos %}
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-toggle="modal" data-target="#galeriaAnexos-{{ entrada.id }}">
+                            <i class="fas fa-paperclip mr-1"></i> Ver ({{ entrada.anexos|length }})
+                        </button>
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td>{{ entrada.observacoes | truncate(40) or '-' }}</td>
+                <td><form action="{{ url_for('arquivar_entrada', id=entrada.id) }}" method="post" style="display: inline;"><button type="submit" class="btn btn-sm btn-secondary" title="Arquivar Pedido"><i class="fas fa-archive"></i></button></form><a href="{{ url_for('editar_entrada', id=entrada.id) }}" class="btn btn-sm btn-info" title="Editar"><i class="fas fa-edit"></i></a><form action="{{ url_for('excluir_entrada', id=entrada.id) }}" method="post" style="display: inline;" onsubmit="return confirm('Tem a certeza que deseja excluir?');"><button type="submit" class="btn btn-sm btn-danger" title="Excluir"><i class="fas fa-trash-alt"></i></button></form></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" class="text-center">Nenhum pedido ativo encontrado.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <br>
+
+    <h3><i class="fas fa-file-invoice-dollar"></i> Orçamentos</h3>
+    <table class="table table-hover table-sm shadow-sm rounded table-uppercase">
+        <thead class="thead-light"><tr><th>Data</th><th>N°</th><th>Cliente</th><th>Status</th><th>Descrição</th><th>Anexos</th><th>Observações</th><th>Ações</th></tr></thead>
+        <tbody>
+            {% for entrada in orcamentos %}
+            <tr>
+                <td>{{ entrada.data_registro.strftime('%d/%m/%Y') }}</td>
+                <td>{{ entrada.numero_pedido }}</td>
+                <td>{{ entrada.cliente }}</td>
+                <td>{% set status_color = 'secondary' %}{% if entrada.status == 'Concluído' %}{% set status_color = 'success' %}{% elif entrada.status == 'Em andamento' %}{% set status_color = 'warning' %}{% elif entrada.status == 'Não iniciado' %}{% set status_color = 'danger' %}{% endif %}<div class="dropdown"><button class="btn btn-{{ status_color }} btn-sm dropdown-toggle" type="button" id="status-btn-{{ entrada.id }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ entrada.status }}</button><div class="dropdown-menu" aria-labelledby="status-btn-{{ entrada.id }}"><a class="dropdown-item status-option" href="#" data-id="{{ entrada.id }}" data-status="Não iniciado">Não iniciado</a><a class="dropdown-item status-option" href="#" data-id="{{ entrada.id }}" data-status="Em andamento">Em andamento</a><a class="dropdown-item status-option" href="#" data-id="{{ entrada.id }}" data-status="Concluído">Concluído</a></div></div></td>
+                <td>{{ entrada.descricao | truncate(40) }}</td>
+                <td>
+                    {% if entrada.anexos %}
+                        <button type="button" class="btn btn-outline-secondary btn-sm" data-toggle="modal" data-target="#galeriaAnexos-{{ entrada.id }}">
+                            <i class="fas fa-paperclip mr-1"></i> Ver ({{ entrada.anexos|length }})
+                        </button>
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td>{{ entrada.observacoes | truncate(40) or '-' }}</td>
+                <td><form action="{{ url_for('converter_para_pedido', id=entrada.id) }}" method="post" style="display: inline;" onsubmit="return confirm('Tem a certeza que deseja converter este orçamento em um pedido?');"><button type="submit" class="btn btn-sm btn-success" title="Converter em Pedido"><i class="fas fa-check-circle"></i></button></form><a href="{{ url_for('editar_entrada', id=entrada.id) }}" class="btn btn-sm btn-info" title="Editar"><i class="fas fa-edit"></i></a><form action="{{ url_for('excluir_entrada', id=entrada.id) }}" method="post" style="display: inline;" onsubmit="return confirm('Tem a certeza que deseja excluir?');"><button type="submit" class="btn btn-sm btn-danger" title="Excluir"><i class="fas fa-trash-alt"></i></button></form></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" class="text-center">Nenhum orçamento encontrado.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
+
+
+{% block modals %}
+    {% for entrada in pedidos + orcamentos %}
+        {% if entrada.anexos %}
+        <div class="modal fade" id="galeriaAnexos-{{ entrada.id }}" tabindex="-1" role="dialog" aria-labelledby="modalLabel-{{ entrada.id }}" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalLabel-{{ entrada.id }}">Anexos de: {{ entrada.tipo }} #{{ entrada.numero_pedido }}</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="carouselAnexos-{{ entrada.id }}" class="carousel slide" data-ride="carousel">
+                            <div class="carousel-inner">
+                                {% for anexo in entrada.anexos %}
+                                <div class="carousel-item text-center {% if loop.first %}active{% endif %}">
+                                    {% if anexo.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')) %}
+                                        <img src="{{ url_for('uploaded_file', filename=anexo.filename) }}" class="d-block w-100" style="max-height: 70vh; object-fit: contain;" alt="{{ anexo.filename }}">
+                                    {% else %}
+                                        <div class="p-5">
+                                            <i class="fas fa-file-alt fa-10x text-muted"></i>
+                                            <p class="mt-3">Não é possível pré-visualizar este tipo de ficheiro.</p>
+                                            <a href="{{ url_for('uploaded_file', filename=anexo.filename) }}" class="btn btn-primary" target="_blank">Descarregar Ficheiro</a>
+                                        </div>
+                                    {% endif %}
+                                    <div class="carousel-caption d-none d-md-block bg-dark rounded p-1" style="opacity: 0.7;">
+                                        <p class="mb-0">{{ anexo.filename }}</p>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% if entrada.anexos|length > 1 %}
+                            <a class="carousel-control-prev" href="#carouselAnexos-{{ entrada.id }}" role="button" data-slide="prev">
+                                <span class="carousel-control-prev-icon" aria-hidden="true" style="background-color: rgba(0,0,0,0.5); border-radius: 5px;"></span>
+                                <span class="sr-only">Anterior</span>
+                            </a>
+                            <a class="carousel-control-next" href="#carouselAnexos-{{ entrada.id }}" role="button" data-slide="next">
+                                <span class="carousel-control-next-icon" aria-hidden="true" style="background-color: rgba(0,0,0,0.5); border-radius: 5px;"></span>
+                                <span class="sr-only">Próximo</span>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    {% endfor %}
+{% endblock %}
+
+
+{% block scripts %}
+    <script>document.addEventListener('DOMContentLoaded',function(){const t=document.querySelectorAll('.status-option'),e={'Não iniciado':'btn-danger','Em andamento':'btn-warning',Concluído:'btn-success'};t.forEach(t=>{t.addEventListener('click',function(n){n.preventDefault();const o=this.dataset.id,s=this.dataset.status;const a=new XMLHttpRequest;a.open('POST',`/atualizar-status/${o}`,!0),a.setRequestHeader('Content-Type','application/json'),a.onload=function(){if(a.status>=200&&a.status<300){const t=JSON.parse(a.responseText);if(t.success){const n=document.getElementById(`status-btn-${o}`);n.textContent=s,n.classList.remove('btn-danger','btn-warning','btn-success','btn-secondary'),n.classList.add(e[s]||'btn-secondary');const c=t.dashboard;document.getElementById('dashboard-nao-iniciados').textContent=c.pedidos_nao_iniciados,document.getElementById('dashboard-em-andamento').textContent=c.pedidos_em_andamento,document.getElementById('dashboard-concluidos').textContent=c.pedidos_concluidos}else alert('Erro ao atualizar o status: '+t.message)}else console.error('O servidor respondeu com um erro:',a.statusText),alert('Ocorreu um erro na resposta do servidor.')},a.onerror=function(){console.error('Erro de rede ao tentar contactar o servidor.'),alert('Ocorreu um erro de comunicação com o servidor.')},a.send(JSON.stringify({status:s}))})})});</script>
+{% endblock %}
