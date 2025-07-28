@@ -10,6 +10,8 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from flask_bcrypt import Bcrypt
 from sqlalchemy import or_, cast
 from functools import wraps
+import click
+from getpass import getpass
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__)
@@ -362,4 +364,35 @@ def uploaded_file(filename):
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+    app.run(debug=True)
+
+# --- NOVOS COMANDOS DE LINHA DE COMANDO DO FLASK ---
+
+@app.cli.command("init-db")
+def init_db_command():
+    """Cria as tabelas da base de dados."""
+    db.create_all()
+    print("Base de dados inicializada e tabelas criadas.")
+
+@app.cli.command("create-admin")
+def create_admin_command():
+    """Cria um novo utilizador administrador."""
+    username = input("Digite o nome de utilizador do ADMIN: ")
+    password = getpass("Digite a senha do ADMIN: ")
+    
+    existing_user = User.query.filter_by(username=username).first()
+    if existing_user:
+        print(f"Erro: O utilizador '{username}' já existe.")
+        return
+        
+    hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+    new_user = User(username=username, password_hash=hashed_password, is_admin=True)
+    
+    db.session.add(new_user)
+    db.session.commit()
+    print(f"Utilizador ADMINISTRADOR '{username}' criado com sucesso!")
+
+# Esta parte é importante para que o `if __name__ == '__main__':` continue a funcionar
+# apenas quando executamos `py app.py` diretamente, e não através do `flask`.
+if __name__ == '__main__':
     app.run(debug=True)
