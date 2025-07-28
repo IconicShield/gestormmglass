@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1>Gestão de Utilizadores</h1>
+    <a href="{{ url_for('index') }}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Voltar ao Painel</a>
+</div>
+
+<div class="row">
+    <div class="col-md-7">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="mb-0">Utilizadores Registados</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-hover table-sm">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome de Utilizador</th>
+                            <th>Admin?</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.id }}</td>
+                            <td>{{ user.username }}</td>
+                            <td>{% if user.is_admin %} <span class="badge badge-success">Sim</span> {% else %} <span class="badge badge-secondary">Não</span> {% endif %}</td>
+                            <td>
+                                {% if user.id != current_user.id %}
+                                <form action="{{ url_for('excluir_usuario', user_id=user.id) }}" method="POST" onsubmit="return confirm('Tem a certeza que deseja excluir este utilizador?');">
+                                    <button type="submit" class="btn btn-danger btn-sm" title="Excluir"><i class="fas fa-trash-alt"></i></button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-5">
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h5 class="mb-0">Registar Novo Utilizador</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('gerir_usuarios') }}">
+                    <div class="form-group">
+                        <label for="username">Nome de Utilizador</label>
+                        <input type="text" name="username" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Senha</label>
+                        <input type="password" name="password" class="form-control" required>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input type="checkbox" name="is_admin" class="form-check-input" id="is_admin_check">
+                        <label class="form-check-label" for="is_admin_check">Tornar este utilizador um Administrador?</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">Registar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
