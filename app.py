@@ -16,7 +16,12 @@ from getpass import getpass
 basedir = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'uma-chave-secreta-muito-dificil-de-adivinhar'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'database.db')
+
+database_url = os.environ.get('DATABASE_URL')
+if database_url and database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///' + os.path.join(basedir, 'database.db')
+
 app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'uploads')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
@@ -361,18 +366,12 @@ def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
-if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-    app.run(debug=True)
-
-# --- NOVOS COMANDOS DE LINHA DE COMANDO DO FLASK ---
-
 @app.cli.command("init-db")
 def init_db_command():
     """Cria as tabelas da base de dados."""
     db.create_all()
     print("Base de dados inicializada e tabelas criadas.")
+
 
 @app.cli.command("create-admin")
 def create_admin_command():
@@ -392,7 +391,6 @@ def create_admin_command():
     db.session.commit()
     print(f"Utilizador ADMINISTRADOR '{username}' criado com sucesso!")
 
-# Esta parte é importante para que o `if __name__ == '__main__':` continue a funcionar
-# apenas quando executamos `py app.py` diretamente, e não através do `flask`.
+
 if __name__ == '__main__':
     app.run(debug=True)
