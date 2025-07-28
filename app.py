@@ -9,20 +9,12 @@ from sqlalchemy.exc import IntegrityError
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
 from sqlalchemy import or_, cast
+from functools import wraps
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'uma-chave-secreta-muito-dificil-de-adivinhar'
-
-# --- ALTERAÇÃO PARA BASE DE DADOS DE PRODUÇÃO ---
-# Procura por uma variável de ambiente DATABASE_URL (usada por serviços como o Render).
-# Se não a encontrar, usa o nosso database.db local como padrão.
-database_url = os.environ.get('DATABASE_URL')
-if database_url and database_url.startswith("postgres://"):
-    database_url = database_url.replace("postgres://", "postgresql://", 1)
-app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///' + os.path.join(basedir, 'database.db')
-
-
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'database.db')
 app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'uploads')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
@@ -39,6 +31,7 @@ class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(150), unique=True, nullable=False)
     password_hash = db.Column(db.String(150), nullable=False)
+    is_admin = db.Column(db.Boolean, default=False, nullable=False)
 
 
 class Entrada(db.Model):
@@ -57,6 +50,15 @@ class Entrada(db.Model):
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_admin:
+            flash('Acesso negado. Apenas administradores podem aceder a esta página.', 'danger')
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -286,6 +288,46 @@ def pedidos_arquivados():
     
     return render_template('pedidos_arquivados.html', pedidos=pedidos, 
                            search_query=search_query, selected_status=selected_status)
+
+
+@app.route('/gerir_usuarios', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def gerir_usuarios():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        is_admin = 'is_admin' in request.form
+
+        existing_user = User.query.filter_by(username=username).first()
+        if existing_user:
+            flash('Este nome de utilizador já existe.', 'danger')
+        else:
+            hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+            new_user = User(username=username, password_hash=hashed_password, is_admin=is_admin)
+            db.session.add(new_user)
+            db.session.commit()
+            flash(f'Utilizador {username} criado com sucesso!', 'success')
+        return redirect(url_for('gerir_usuarios'))
+
+    users = User.query.all()
+    return render_template('gerir_usuarios.html', users=users)
+
+
+@app.route('/excluir_usuario/<int:user_id>', methods=['POST'])
+@login_required
+@admin_required
+def excluir_usuario(user_id):
+    user_to_delete = User.query.get_or_404(user_id)
+
+    if user_to_delete.id == current_user.id:
+        flash('Não pode excluir a sua própria conta de administrador.', 'danger')
+        return redirect(url_for('gerir_usuarios'))
+    
+    db.session.delete(user_to_delete)
+    db.session.commit()
+    flash(f'Utilizador {user_to_delete.username} excluído com sucesso.', 'success')
+    return redirect(url_for('gerir_usuarios'))
 
 
 @app.route('/excluir/<int:id>', methods=['POST'])

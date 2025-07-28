@@ -8,7 +8,6 @@
     <title>Gestão MMGlass</title>
     
     <style>
-        /* Variáveis de Cores para o Tema */
         :root {
             --bg-color: #f8f9fc;
             --text-color: #5a5c69;
@@ -31,26 +30,38 @@
             --dropdown-hover-bg: #495057;
         }
 
-        /* Estilos Gerais */
-        body { background-color: var(--bg-color); color: var(--text-color); transition: background-color 0.2s ease, color 0.2s ease; }
-        .card { border: 1px solid var(--border-color); background-color: var(--card-bg); }
-        .table { background-color: var(--table-bg); color: var(--text-color); }
-        .table.rounded { overflow: hidden; }
-        .navbar { background-color: var(--navbar-bg) !important; }
-        .navbar-light .navbar-brand, .navbar-light .navbar-text { color: var(--navbar-text) !important; }
-        .table-uppercase td { text-transform: uppercase; }
-
-        /* ### NOVOS ESTILOS PARA O DROPDOWN ### */
-        /* 1. Correção para o dropdown cortado na tabela */
+        body { 
+            background-color: var(--bg-color); 
+            color: var(--text-color);
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        .card { 
+            border: 1px solid var(--border-color);
+            background-color: var(--card-bg);
+        }
+        .table {
+            background-color: var(--table-bg);
+            color: var(--text-color);
+        }
+        .table.rounded {
+            overflow: hidden;
+        }
+        .navbar {
+            background-color: var(--navbar-bg) !important;
+        }
+        .navbar-light .navbar-brand, .navbar-light .navbar-text {
+             color: var(--navbar-text) !important;
+        }
+        .table-uppercase td {
+            text-transform: uppercase;
+        }
         .table .dropdown {
             position: static;
         }
-        /* 2. Bordas arredondadas para o menu */
         .dropdown-menu {
             border-radius: 0.375rem;
             border-color: var(--border-color);
         }
-        /* 3. Estilos do dropdown para o Tema */
         [data-theme="dark"] .dropdown-menu {
             background-color: var(--card-bg);
             border-color: var(--border-color);
@@ -61,9 +72,6 @@
         [data-theme="dark"] .dropdown-item:hover, [data-theme="dark"] .dropdown-item:focus {
             background-color: var(--dropdown-hover-bg);
         }
-        /* ### FIM DOS NOVOS ESTILOS ### */
-
-        /* Estilos do Dashboard (mantidos) */
         .border-left-primary { border-left: .25rem solid #4e73df!important; }
         .border-left-success { border-left: .25rem solid #1cc88a!important; }
         .border-left-info { border-left: .25rem solid #36b9cc!important; }
@@ -85,6 +93,12 @@
         </a>
         <div class="d-flex align-items-center">
             {% if current_user.is_authenticated %}
+                {% if current_user.is_admin %}
+                <a href="{{ url_for('gerir_usuarios') }}" class="btn btn-outline-secondary btn-sm mr-3" title="Gerir Utilizadores">
+                    <i class="fas fa-users-cog"></i>
+                </a>
+                {% endif %}
+                
                 <span class="navbar-text mr-3">Olá, {{ current_user.username }}</span>
                 <div class="btn-group btn-group-sm mr-3" role="group">
                     <button type="button" class="btn btn-outline-secondary" id="theme-light" title="Tema Claro"><i class="fas fa-sun"></i></button>
