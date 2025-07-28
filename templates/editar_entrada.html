@@ -5,7 +5,6 @@
     <form method="post" enctype="multipart/form-data">
         <div class="row">
             <div class="col-md-6">
-
                 <div class="form-group">
                     <label>Tipo de Entrada</label>
                     <div class="btn-group btn-group-toggle d-block" data-toggle="buttons">
@@ -17,17 +16,14 @@
                         </label>
                     </div>
                 </div>
-
                 <div class="form-group">
                     <label for="numero_pedido">N° da Entrada</label>
                     <input type="text" name="numero_pedido" id="numero_pedido" class="form-control" value="{{ entrada.numero_pedido }}" required>
                 </div>
-
                 <div class="form-group">
                     <label for="cliente">Cliente</label>
                     <input type="text" name="cliente" id="cliente" class="form-control" value="{{ entrada.cliente }}" required>
                 </div>
-
                 <div class="form-group">
                     <label for="status">Status</label>
                     <select name="status" id="status" class="form-control">
@@ -37,31 +33,38 @@
                     </select>
                 </div>
             </div>
-
             <div class="col-md-6">
                 <div class="form-group">
                     <label for="descricao">Descrição</label>
                     <textarea name="descricao" id="descricao" class="form-control" required rows="4">{{ entrada.descricao }}</textarea>
                 </div>
-
                 <div class="form-group">
                     <label for="observacoes">Observações</label>
                     <textarea name="observacoes" id="observacoes" class="form-control" rows="4">{{ entrada.observacoes or '' }}</textarea>
                 </div>
-
                 <div class="form-group">
-                    <label>Anexo</label>
-                    {% if entrada.anexo %}
-                    <p class="small">Anexo atual: <a href="{{ url_for('uploaded_file', filename=entrada.anexo) }}" target="_blank">{{ entrada.anexo }}</a></p>
+                    <label>Anexos Existentes</label>
+                    {% if entrada.anexos %}
+                        <ul class="list-group mb-3">
+                        {% for anexo in entrada.anexos %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <a href="{{ url_for('uploaded_file', filename=anexo.filename) }}" target="_blank">{{ anexo.filename }}</a>
+                                <form action="{{ url_for('excluir_anexo', anexo_id=anexo.id) }}" method="POST" onsubmit="return confirm('Tem a certeza que deseja excluir este anexo?');">
+                                    <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash-alt"></i></button>
+                                </form>
+                            </li>
+                        {% endfor %}
+                        </ul>
                     {% else %}
-                    <p class="text-muted small">Nenhum anexo encontrado.</p>
+                        <p class="text-muted small">Nenhum anexo encontrado.</p>
                     {% endif %}
-                    <label for="anexo" class="small">Substituir anexo (opcional):</label>
-                    <input type="file" name="anexo" id="anexo" class="form-control-file">
+                </div>
+                <div class="form-group">
+                    <label for="anexos">Adicionar Novos Anexos</label>
+                    <input type="file" name="anexos" id="anexos" class="form-control-file" multiple>
                 </div>
             </div>
         </div>
-        
         <hr>
         <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Salvar Alterações</button>
         <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancelar</a>

@@ -41,6 +41,12 @@ class User(db.Model, UserMixin):
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
 
 
+class Anexo(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    filename = db.Column(db.String(200), nullable=False)
+    entrada_id = db.Column(db.Integer, db.ForeignKey('entrada.id'), nullable=False)
+
+
 class Entrada(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     tipo = db.Column(db.String(50), nullable=False)
@@ -49,14 +55,15 @@ class Entrada(db.Model):
     cliente = db.Column(db.String(100), nullable=False)
     status = db.Column(db.String(50), nullable=False, default='Não iniciado')
     descricao = db.Column(db.Text, nullable=False)
-    anexo = db.Column(db.String(200), nullable=True)
     observacoes = db.Column(db.Text, nullable=True)
     arquivado = db.Column(db.Boolean, default=False, nullable=False)
+    anexos = db.relationship('Anexo', backref='entrada', lazy=True, cascade="all, delete-orphan")
 
 
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
 
 def admin_required(f):
     @wraps(f)
@@ -97,44 +104,23 @@ def logout():
 def index():
     search_query = request.args.get('q', '')
     selected_status = request.args.get('status', '')
-    
     pedidos_base_query = Entrada.query.filter_by(tipo='Pedido', arquivado=False)
     orcamentos_base_query = Entrada.query.filter_by(tipo='Orçamento', arquivado=False)
-
     if search_query:
         search_term = f"%{search_query}%"
-        pedidos_base_query = pedidos_base_query.filter(or_(
-            cast(Entrada.numero_pedido, db.String).ilike(search_term),
-            Entrada.cliente.ilike(search_term),
-            Entrada.descricao.ilike(search_term)
-        ))
-        orcamentos_base_query = orcamentos_base_query.filter(or_(
-            cast(Entrada.numero_pedido, db.String).ilike(search_term),
-            Entrada.cliente.ilike(search_term),
-            Entrada.descricao.ilike(search_term)
-        ))
-        
+        pedidos_base_query = pedidos_base_query.filter(or_(cast(Entrada.numero_pedido, db.String).ilike(search_term), Entrada.cliente.ilike(search_term), Entrada.descricao.ilike(search_term)))
+        orcamentos_base_query = orcamentos_base_query.filter(or_(cast(Entrada.numero_pedido, db.String).ilike(search_term), Entrada.cliente.ilike(search_term), Entrada.descricao.ilike(search_term)))
     if selected_status:
         pedidos_base_query = pedidos_base_query.filter_by(status=selected_status)
         orcamentos_base_query = orcamentos_base_query.filter_by(status=selected_status)
-        
     pedidos = pedidos_base_query.order_by(Entrada.numero_pedido).all()
     orcamentos = orcamentos_base_query.order_by(Entrada.numero_pedido).all()
-
     pedidos_nao_iniciados = Entrada.query.filter_by(tipo='Pedido', status='Não iniciado', arquivado=False).count()
     pedidos_em_andamento = Entrada.query.filter_by(tipo='Pedido', status='Em andamento', arquivado=False).count()
     pedidos_concluidos = Entrada.query.filter_by(tipo='Pedido', status='Concluído', arquivado=False).count()
     total_orcamentos = Entrada.query.filter_by(tipo='Orçamento', arquivado=False).count()
-    
-    dashboard_data = {
-        'pedidos_nao_iniciados': pedidos_nao_iniciados,
-        'pedidos_em_andamento': pedidos_em_andamento,
-        'pedidos_concluidos': pedidos_concluidos,
-        'total_orcamentos': total_orcamentos
-    }
-    
-    return render_template('index.html', dashboard=dashboard_data, pedidos=pedidos, orcamentos=orcamentos, 
-                           search_query=search_query, selected_status=selected_status)
+    dashboard_data = {'pedidos_nao_iniciados': pedidos_nao_iniciados, 'pedidos_em_andamento': pedidos_em_andamento, 'pedidos_concluidos': pedidos_concluidos, 'total_orcamentos': total_orcamentos}
+    return render_template('index.html', dashboard=dashboard_data, pedidos=pedidos, orcamentos=orcamentos, search_query=search_query, selected_status=selected_status)
 
 
 @app.route('/novo', methods=['GET', 'POST'])
@@ -149,28 +135,18 @@ def nova_entrada():
         if Entrada.query.filter_by(numero_pedido=numero_pedido).first():
             flash(f'O N° de entrada {numero_pedido} já existe. Tente outro.', 'danger')
             return render_template('nova_entrada.html', form_data=request.form)
-        
-        nova = Entrada(
-            tipo=request.form.get('tipo'),
-            numero_pedido=numero_pedido,
-            cliente=request.form.get('cliente'),
-            status=request.form.get('status'),
-            descricao=request.form.get('descricao'),
-            observacoes=request.form.get('observacoes')
-        )
-
-        if 'anexo' in request.files:
-            ficheiro = request.files['anexo']
+        nova = Entrada(tipo=request.form.get('tipo'), numero_pedido=numero_pedido, cliente=request.form.get('cliente'), status=request.form.get('status'), descricao=request.form.get('descricao'), observacoes=request.form.get('observacoes'))
+        db.session.add(nova)
+        uploaded_files = request.files.getlist('anexos')
+        for ficheiro in uploaded_files:
             if ficheiro and ficheiro.filename != '':
                 anexo_filename = secure_filename(ficheiro.filename)
                 ficheiro.save(os.path.join(app.config['UPLOAD_FOLDER'], anexo_filename))
-                nova.anexo = anexo_filename
-        
-        db.session.add(nova)
+                novo_anexo = Anexo(filename=anexo_filename, entrada=nova)
+                db.session.add(novo_anexo)
         db.session.commit()
         flash(f"{nova.tipo} criado com sucesso!", 'success')
         return redirect(url_for('index'))
-    
     return render_template('nova_entrada.html', form_data={})
 
 
@@ -185,25 +161,51 @@ def editar_entrada(id):
         entrada.status = request.form.get('status')
         entrada.descricao = request.form.get('descricao')
         entrada.observacoes = request.form.get('observacoes')
-        
-        if 'anexo' in request.files:
-            ficheiro = request.files['anexo']
+        uploaded_files = request.files.getlist('anexos')
+        for ficheiro in uploaded_files:
             if ficheiro and ficheiro.filename != '':
-                if entrada.anexo:
-                    try:
-                        os.remove(os.path.join(app.config['UPLOAD_FOLDER'], entrada.anexo))
-                    except FileNotFoundError:
-                        pass
-                
                 anexo_filename = secure_filename(ficheiro.filename)
                 ficheiro.save(os.path.join(app.config['UPLOAD_FOLDER'], anexo_filename))
-                entrada.anexo = anexo_filename
-
+                novo_anexo = Anexo(filename=anexo_filename, entrada=entrada)
+                db.session.add(novo_anexo)
         db.session.commit()
         flash(f'{entrada.tipo} atualizado com sucesso!', 'success')
-        return redirect(url_for('index'))
-        
+        return redirect(url_for('editar_entrada', id=id))
     return render_template('editar_entrada.html', entrada=entrada)
+
+
+@app.route('/excluir-anexo/<int:anexo_id>', methods=['POST'])
+@login_required
+def excluir_anexo(anexo_id):
+    anexo = Anexo.query.get_or_404(anexo_id)
+    entrada_id = anexo.entrada_id
+    try:
+        os.remove(os.path.join(app.config['UPLOAD_FOLDER'], anexo.filename))
+    except FileNotFoundError:
+        pass
+    db.session.delete(anexo)
+    db.session.commit()
+    flash('Anexo excluído com sucesso.', 'success')
+    return redirect(url_for('editar_entrada', id=entrada_id))
+
+
+@app.route('/excluir/<int:id>', methods=['POST'])
+@login_required
+def excluir_entrada(id):
+    entrada_a_excluir = Entrada.query.get_or_404(id)
+    for anexo in entrada_a_excluir.anexos:
+        try:
+            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], anexo.filename))
+        except FileNotFoundError:
+            pass
+    db.session.delete(entrada_a_excluir)
+    db.session.commit()
+    tipo_entrada = entrada_a_excluir.tipo
+    if entrada_a_excluir.arquivado:
+        flash(f'{tipo_entrada} arquivado foi excluído permanentemente!', 'danger')
+        return redirect(url_for('pedidos_arquivados'))
+    flash(f'{tipo_entrada} foi excluído com sucesso!', 'danger')
+    return redirect(url_for('index'))
 
 
 @app.route('/atualizar-status/<int:id>', methods=['POST'])
@@ -212,27 +214,14 @@ def atualizar_status(id):
     entrada = Entrada.query.get_or_404(id)
     data = request.get_json()
     novo_status = data.get('status')
-    
     if novo_status in ['Não iniciado', 'Em andamento', 'Concluído']:
         entrada.status = novo_status
         db.session.commit()
-
         pedidos_nao_iniciados = Entrada.query.filter_by(tipo='Pedido', status='Não iniciado', arquivado=False).count()
         pedidos_em_andamento = Entrada.query.filter_by(tipo='Pedido', status='Em andamento', arquivado=False).count()
         pedidos_concluidos = Entrada.query.filter_by(tipo='Pedido', status='Concluído', arquivado=False).count()
-        
-        novos_dados_dashboard = {
-            'pedidos_nao_iniciados': pedidos_nao_iniciados,
-            'pedidos_em_andamento': pedidos_em_andamento,
-            'pedidos_concluidos': pedidos_concluidos
-        }
-        
-        return jsonify({
-            'success': True, 
-            'message': 'Status atualizado com sucesso!',
-            'dashboard': novos_dados_dashboard 
-        })
-        
+        novos_dados_dashboard = {'pedidos_nao_iniciados': pedidos_nao_iniciados, 'pedidos_em_andamento': pedidos_em_andamento, 'pedidos_concluidos': pedidos_concluidos}
+        return jsonify({'success': True, 'message': 'Status atualizado com sucesso!', 'dashboard': novos_dados_dashboard})
     return jsonify({'success': False, 'message': 'Status inválido.'}), 400
 
 
@@ -240,7 +229,6 @@ def atualizar_status(id):
 @login_required
 def converter_para_pedido(id):
     orcamento = Entrada.query.get_or_404(id)
-    
     if orcamento.tipo == 'Orçamento':
         orcamento.tipo = 'Pedido'
         orcamento.status = 'Não iniciado'
@@ -248,7 +236,6 @@ def converter_para_pedido(id):
         flash(f"Orçamento #{orcamento.numero_pedido} foi convertido em Pedido com sucesso!", 'success')
     else:
         flash('Esta entrada já é um Pedido.', 'warning')
-        
     return redirect(url_for('index'))
 
 
@@ -277,24 +264,14 @@ def desarquivar_entrada(id):
 def pedidos_arquivados():
     search_query = request.args.get('q', '')
     selected_status = request.args.get('status', '')
-    
     base_query = Entrada.query.filter_by(tipo='Pedido', arquivado=True)
-
     if search_query:
         search_term = f"%{search_query}%"
-        base_query = base_query.filter(or_(
-            cast(Entrada.numero_pedido, db.String).ilike(search_term),
-            Entrada.cliente.ilike(search_term),
-            Entrada.descricao.ilike(search_term)
-        ))
-        
+        base_query = base_query.filter(or_(cast(Entrada.numero_pedido, db.String).ilike(search_term), Entrada.cliente.ilike(search_term), Entrada.descricao.ilike(search_term)))
     if selected_status:
         base_query = base_query.filter_by(status=selected_status)
-        
     pedidos = base_query.order_by(Entrada.numero_pedido).all()
-    
-    return render_template('pedidos_arquivados.html', pedidos=pedidos, 
-                           search_query=search_query, selected_status=selected_status)
+    return render_template('pedidos_arquivados.html', pedidos=pedidos, search_query=search_query, selected_status=selected_status)
 
 
 @app.route('/gerir_usuarios', methods=['GET', 'POST'])
@@ -305,7 +282,6 @@ def gerir_usuarios():
         username = request.form.get('username')
         password = request.form.get('password')
         is_admin = 'is_admin' in request.form
-
         existing_user = User.query.filter_by(username=username).first()
         if existing_user:
             flash('Este nome de utilizador já existe.', 'danger')
@@ -316,7 +292,6 @@ def gerir_usuarios():
             db.session.commit()
             flash(f'Utilizador {username} criado com sucesso!', 'success')
         return redirect(url_for('gerir_usuarios'))
-
     users = User.query.all()
     return render_template('gerir_usuarios.html', users=users)
 
@@ -326,67 +301,39 @@ def gerir_usuarios():
 @admin_required
 def excluir_usuario(user_id):
     user_to_delete = User.query.get_or_404(user_id)
-
     if user_to_delete.id == current_user.id:
         flash('Não pode excluir a sua própria conta de administrador.', 'danger')
         return redirect(url_for('gerir_usuarios'))
-    
     db.session.delete(user_to_delete)
     db.session.commit()
     flash(f'Utilizador {user_to_delete.username} excluído com sucesso.', 'success')
     return redirect(url_for('gerir_usuarios'))
-
-
-@app.route('/excluir/<int:id>', methods=['POST'])
-@login_required
-def excluir_entrada(id):
-    entrada_a_excluir = Entrada.query.get_or_404(id)
-    tipo_entrada = entrada_a_excluir.tipo
     
-    if entrada_a_excluir.anexo:
-        try:
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], entrada_a_excluir.anexo))
-        except FileNotFoundError:
-            pass
-            
-    db.session.delete(entrada_a_excluir)
-    db.session.commit()
-    
-    if entrada_a_excluir.arquivado:
-        flash(f'{tipo_entrada} arquivado foi excluído permanentemente!', 'danger')
-        return redirect(url_for('pedidos_arquivados'))
-    
-    flash(f'{tipo_entrada} foi excluído com sucesso!', 'danger')
-    return redirect(url_for('index'))
-
 
 @app.route('/uploads/<filename>')
 @login_required
 def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    response = send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    return response
 
 
 @app.cli.command("init-db")
 def init_db_command():
-    """Cria as tabelas da base de dados."""
     db.create_all()
     print("Base de dados inicializada e tabelas criadas.")
 
 
 @app.cli.command("create-admin")
 def create_admin_command():
-    """Cria um novo utilizador administrador."""
     username = input("Digite o nome de utilizador do ADMIN: ")
     password = getpass("Digite a senha do ADMIN: ")
-    
     existing_user = User.query.filter_by(username=username).first()
     if existing_user:
         print(f"Erro: O utilizador '{username}' já existe.")
         return
-        
     hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
     new_user = User(username=username, password_hash=hashed_password, is_admin=True)
-    
     db.session.add(new_user)
     db.session.commit()
     print(f"Utilizador ADMINISTRADOR '{username}' criado com sucesso!")
