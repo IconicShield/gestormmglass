@@ -12,10 +12,15 @@ from sqlalchemy import or_, cast
 from functools import wraps
 import click
 from getpass import getpass
+from flask_socketio import SocketIO
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'uma-chave-secreta-muito-dificil-de-adivinhar'
+
+# Configuração correta para o SocketIO
+socketio = SocketIO(app, async_mode='eventlet')
+
 database_url = os.environ.get('DATABASE_URL')
 if database_url and database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
@@ -155,6 +160,7 @@ def nova_entrada():
                 novo_anexo = Anexo(filename=anexo_filename, entrada=nova_entrada_obj)
                 db.session.add(novo_anexo)
         db.session.commit()
+        socketio.emit('update_data')
         flash(f"{nova_entrada_obj.tipo} criado com sucesso!", 'success')
         return redirect(url_for('index'))
     return render_template('nova_entrada.html', form_data={})
@@ -179,6 +185,7 @@ def editar_entrada(id):
                 novo_anexo = Anexo(filename=anexo_filename, entrada=entrada)
                 db.session.add(novo_anexo)
         db.session.commit()
+        socketio.emit('update_data')
         flash(f'{entrada.tipo} atualizado com sucesso!', 'success')
         return redirect(url_for('editar_entrada', id=id))
     return render_template('editar_entrada.html', entrada=entrada)
@@ -195,6 +202,7 @@ def excluir_anexo(anexo_id):
         pass
     db.session.delete(anexo)
     db.session.commit()
+    socketio.emit('update_data')
     flash('Anexo excluído com sucesso.', 'success')
     return redirect(url_for('editar_entrada', id=entrada_id))
 
@@ -210,6 +218,7 @@ def excluir_entrada(id):
             pass
     db.session.delete(entrada_a_excluir)
     db.session.commit()
+    socketio.emit('update_data')
     tipo_entrada = entrada_a_excluir.tipo
     if entrada_a_excluir.arquivado:
         flash(f'{tipo_entrada} arquivado foi excluído permanentemente!', 'danger')
@@ -227,6 +236,7 @@ def atualizar_status(id):
     if novo_status in ['Não iniciado', 'Em andamento', 'Concluído']:
         entrada.status = novo_status
         db.session.commit()
+        socketio.emit('update_data')
         novos_dados_dashboard = get_dashboard_data()
         return jsonify({'success': True, 'message': 'Status atualizado com sucesso!', 'dashboard': novos_dados_dashboard})
     return jsonify({'success': False, 'message': 'Status inválido.'}), 400
@@ -240,6 +250,7 @@ def converter_para_pedido(id):
         orcamento.tipo = 'Pedido'
         orcamento.status = 'Não iniciado'
         db.session.commit()
+        socketio.emit('update_data')
         flash(f"Orçamento #{orcamento.numero_pedido} foi convertido em Pedido com sucesso!", 'success')
     else:
         flash('Esta entrada já é um Pedido.', 'warning')
@@ -252,6 +263,7 @@ def arquivar_entrada(id):
     entrada = Entrada.query.get_or_404(id)
     entrada.arquivado = True
     db.session.commit()
+    socketio.emit('update_data')
     flash(f'{entrada.tipo} #{entrada.numero_pedido} foi arquivado com sucesso.', 'success')
     return redirect(url_for('index'))
 
@@ -262,6 +274,7 @@ def desarquivar_entrada(id):
     entrada = Entrada.query.get_or_404(id)
     entrada.arquivado = False
     db.session.commit()
+    socketio.emit('update_data')
     flash(f'{entrada.tipo} #{entrada.numero_pedido} foi restaurado com sucesso.', 'success')
     return redirect(url_for('pedidos_arquivados'))
 
@@ -280,6 +293,7 @@ def pedidos_arquivados():
     pedidos = base_query.order_by(Entrada.numero_pedido).all()
     return render_template('pedidos_arquivados.html', pedidos=pedidos, search_query=search_query, selected_status=selected_status)
 
+
 @app.route('/gerir_usuarios', methods=['GET', 'POST'])
 @login_required
 @admin_required
@@ -296,6 +310,7 @@ def gerir_usuarios():
             new_user = User(username=username, password_hash=hashed_password, is_admin=is_admin)
             db.session.add(new_user)
             db.session.commit()
+            socketio.emit('update_data')
             flash(f'Utilizador {username} criado com sucesso!', 'success')
         return redirect(url_for('gerir_usuarios'))
     users = User.query.all()
@@ -312,6 +327,7 @@ def excluir_usuario(user_id):
         return redirect(url_for('gerir_usuarios'))
     db.session.delete(user_to_delete)
     db.session.commit()
+    socketio.emit('update_data')
     flash(f'Utilizador {user_to_delete.username} excluído com sucesso.', 'success')
     return redirect(url_for('gerir_usuarios'))
     
@@ -346,4 +362,4 @@ def create_admin_command():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    socketio.run(app, debug=True)
