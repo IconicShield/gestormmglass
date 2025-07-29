@@ -72,7 +72,16 @@
                         {% endif %}
                     </td>
                     <td>{{ entrada.observacoes | truncate(40) or '-' }}</td>
-                    <td><form action="{{ url_for('converter_para_pedido', id=entrada.id) }}" method="post" style="display: inline;" onsubmit="return confirm('Tem a certeza que deseja converter este orçamento em um pedido?');"><button type="submit" class="btn btn-sm btn-success" title="Converter em Pedido"><i class="fas fa-check-circle"></i></button></form><a href="{{ url_for('editar_entrada', id=entrada.id) }}" class="btn btn-sm btn-info" title="Editar"><i class="fas fa-edit"></i></a><form action="{{ url_for('excluir_entrada', id=entrada.id) }}" method="post" style="display: inline;" onsubmit="return confirm('Tem a certeza que deseja excluir?');"><button type="submit" class="btn btn-sm btn-danger" title="Excluir"><i class="fas fa-trash-alt"></i></button></form></td>
+                    <td>
+                        <form action="{{ url_for('arquivar_entrada', id=entrada.id) }}" method="post" style="display: inline;">
+                            <button type="submit" class="btn btn-sm btn-secondary" title="Arquivar Orçamento">
+                                <i class="fas fa-archive"></i>
+                            </button>
+                        </form>
+                        <form action="{{ url_for('converter_para_pedido', id=entrada.id) }}" method="post" style="display: inline;" onsubmit="return confirm('Tem a certeza que deseja converter este orçamento em um pedido?');"><button type="submit" class="btn btn-sm btn-success" title="Converter em Pedido"><i class="fas fa-check-circle"></i></button></form>
+                        <a href="{{ url_for('editar_entrada', id=entrada.id) }}" class="btn btn-sm btn-info" title="Editar"><i class="fas fa-edit"></i></a>
+                        <form action="{{ url_for('excluir_entrada', id=entrada.id) }}" method="post" style="display: inline;" onsubmit="return confirm('Tem a certeza que deseja excluir?');"><button type="submit" class="btn btn-sm btn-danger" title="Excluir"><i class="fas fa-trash-alt"></i></button></form>
+                    </td>
                 </tr>
                 {% else %}
                 <tr><td colspan="8" class="text-center">Nenhum orçamento encontrado.</td></tr>

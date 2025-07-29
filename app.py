@@ -283,16 +283,22 @@ def desarquivar_entrada(id):
 @app.route('/arquivados')
 @login_required
 def pedidos_arquivados():
+    # Lógica de filtro (mantida para futura implementação na página de arquivados)
     search_query = request.args.get('q', '')
     selected_status = request.args.get('status', '')
-    base_query = Entrada.query.filter_by(tipo='Pedido', arquivado=True)
-    if search_query:
-        search_term = f"%{search_query}%"
-        base_query = base_query.filter(or_(cast(Entrada.numero_pedido, db.String).ilike(search_term), Entrada.cliente.ilike(search_term), Entrada.descricao.ilike(search_term)))
-    if selected_status:
-        base_query = base_query.filter_by(status=selected_status)
-    pedidos = base_query.order_by(Entrada.numero_pedido).all()
-    return render_template('pedidos_arquivados.html', pedidos=pedidos, search_query=search_query, selected_status=selected_status)
+
+    # Busca pedidos arquivados
+    pedidos_arquivados_query = Entrada.query.filter_by(tipo='Pedido', arquivado=True)
+    # Busca orçamentos arquivados
+    orcamentos_arquivados_query = Entrada.query.filter_by(tipo='Orçamento', arquivado=True)
+
+    # (A lógica de filtro pode ser aplicada aqui no futuro, se necessário)
+
+    pedidos = pedidos_arquivados_query.order_by(Entrada.data_registro.desc()).all()
+    orcamentos = orcamentos_arquivados_query.order_by(Entrada.data_registro.desc()).all()
+
+    return render_template('pedidos_arquivados.html', pedidos=pedidos, orcamentos=orcamentos, 
+                           search_query=search_query, selected_status=selected_status)
 
 
 @app.route('/gerir_usuarios', methods=['GET', 'POST'])
