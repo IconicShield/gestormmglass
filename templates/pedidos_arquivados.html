@@ -52,7 +52,11 @@
             {% for entrada in pedidos %}
             <tr>
                 <td>{{ entrada.data_registro.strftime('%d/%m/%Y') }}</td>
-                <td>{{ entrada.numero_pedido }}</td>
+                <td>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" style="color: var(--text-color);" data-toggle="modal" data-target="#detalhesModal-{{ entrada.id }}">
+                        {{ entrada.numero_pedido }}
+                    </button>
+                </td>
                 <td>{{ entrada.cliente }}</td>
                 <td>
                     {% set status_color = 'secondary' %}
@@ -80,4 +84,54 @@
             {% endfor %}
         </tbody>
     </table>
+{% endblock %}
+
+{% block modals %}
+    {% for entrada in pedidos %}
+    <div class="modal fade" id="detalhesModal-{{ entrada.id }}" tabindex="-1" role="dialog" aria-labelledby="detalhesModalLabel-{{ entrada.id }}" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="detalhesModalLabel-{{ entrada.id }}">Detalhes do {{ entrada.tipo }} #{{ entrada.numero_pedido }}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-info-circle text-primary"></i> Informações Gerais</h6><hr class="mt-1">
+                            <dl class="row"><dt class="col-sm-5">N° da Entrada</dt><dd class="col-sm-7">{{ entrada.numero_pedido }}</dd>
+                                <dt class="col-sm-5">Tipo</dt><dd class="col-sm-7">{{ entrada.tipo }}</dd>
+                                <dt class="col-sm-5">Data de Registo</dt><dd class="col-sm-7">{{ entrada.data_registro.strftime('%d/%m/%Y às %H:%M') }}</dd>
+                                <dt class="col-sm-5">Cliente</dt><dd class="col-sm-7 text-uppercase">{{ entrada.cliente }}</dd>
+                                <dt class="col-sm-5">Status</dt><dd class="col-sm-7">{% set status_color = 'secondary' %}{% if entrada.status == 'Concluído' %}{% set status_color = 'success' %}{% elif entrada.status == 'Em andamento' %}{% set status_color = 'warning' %}{% elif entrada.status == 'Não iniciado' %}{% set status_color = 'danger' %}{% endif %}<span class="badge badge-{{ status_color }}">{{ entrada.status }}</span></dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <h6><i class="fas fa-paperclip text-primary"></i> Anexo</h6><hr class="mt-1">
+                            {% if entrada.anexo %}
+                                <a href="{{ url_for('uploaded_file', filename=entrada.anexo) }}" class="btn btn-outline-secondary btn-sm" target="_blank"><i class="fas fa-download"></i> Ver / Descarregar Anexo</a>
+                            {% else %}
+                                <p class="text-muted small">Nenhum anexo para esta entrada.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6><i class="fas fa-align-left text-primary"></i> Descrição</h6><hr class="mt-1">
+                            <p class="text-uppercase" style="white-space: pre-wrap;">{{ entrada.descricao }}</p>
+                            <h6 class="mt-3"><i class="fas fa-comment-alt text-primary"></i> Observações</h6><hr class="mt-1">
+                            <p class="text-uppercase" style="white-space: pre-wrap;">{{ entrada.observacoes or 'Nenhuma observação.' }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a href="{{ url_for('editar_entrada', id=entrada.id) }}" class="btn btn-info"><i class="fas fa-edit"></i> Editar</a>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
 {% endblock %}

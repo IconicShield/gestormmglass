@@ -16,17 +16,14 @@ from getpass import getpass
 basedir = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'uma-chave-secreta-muito-dificil-de-adivinhar'
-
 database_url = os.environ.get('DATABASE_URL')
 if database_url and database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql://", 1)
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///' + os.path.join(basedir, 'database.db')
-
 app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'uploads')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-
 bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
@@ -64,7 +61,6 @@ class Entrada(db.Model):
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -73,6 +69,24 @@ def admin_required(f):
             return redirect(url_for('index'))
         return f(*args, **kwargs)
     return decorated_function
+
+
+def get_dashboard_data():
+    pedidos_query = Entrada.query.filter_by(tipo='Pedido', arquivado=False)
+    pedidos_dashboard = {
+        'total': pedidos_query.count(),
+        'nao_iniciado': pedidos_query.filter_by(status='Não iniciado').count(),
+        'em_andamento': pedidos_query.filter_by(status='Em andamento').count(),
+        'concluido': pedidos_query.filter_by(status='Concluído').count()
+    }
+    orcamentos_query = Entrada.query.filter_by(tipo='Orçamento', arquivado=False)
+    orcamentos_dashboard = {
+        'total': orcamentos_query.count(),
+        'nao_iniciado': orcamentos_query.filter_by(status='Não iniciado').count(),
+        'em_andamento': orcamentos_query.filter_by(status='Em andamento').count(),
+        'concluido': orcamentos_query.filter_by(status='Concluído').count()
+    }
+    return {'pedidos': pedidos_dashboard, 'orcamentos': orcamentos_dashboard}
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -115,11 +129,7 @@ def index():
         orcamentos_base_query = orcamentos_base_query.filter_by(status=selected_status)
     pedidos = pedidos_base_query.order_by(Entrada.numero_pedido).all()
     orcamentos = orcamentos_base_query.order_by(Entrada.numero_pedido).all()
-    pedidos_nao_iniciados = Entrada.query.filter_by(tipo='Pedido', status='Não iniciado', arquivado=False).count()
-    pedidos_em_andamento = Entrada.query.filter_by(tipo='Pedido', status='Em andamento', arquivado=False).count()
-    pedidos_concluidos = Entrada.query.filter_by(tipo='Pedido', status='Concluído', arquivado=False).count()
-    total_orcamentos = Entrada.query.filter_by(tipo='Orçamento', arquivado=False).count()
-    dashboard_data = {'pedidos_nao_iniciados': pedidos_nao_iniciados, 'pedidos_em_andamento': pedidos_em_andamento, 'pedidos_concluidos': pedidos_concluidos, 'total_orcamentos': total_orcamentos}
+    dashboard_data = get_dashboard_data()
     return render_template('index.html', dashboard=dashboard_data, pedidos=pedidos, orcamentos=orcamentos, search_query=search_query, selected_status=selected_status)
 
 
@@ -135,17 +145,17 @@ def nova_entrada():
         if Entrada.query.filter_by(numero_pedido=numero_pedido).first():
             flash(f'O N° de entrada {numero_pedido} já existe. Tente outro.', 'danger')
             return render_template('nova_entrada.html', form_data=request.form)
-        nova = Entrada(tipo=request.form.get('tipo'), numero_pedido=numero_pedido, cliente=request.form.get('cliente'), status=request.form.get('status'), descricao=request.form.get('descricao'), observacoes=request.form.get('observacoes'))
-        db.session.add(nova)
+        nova_entrada_obj = Entrada(tipo=request.form.get('tipo'), numero_pedido=numero_pedido, cliente=request.form.get('cliente'), status=request.form.get('status'), descricao=request.form.get('descricao'), observacoes=request.form.get('observacoes'))
+        db.session.add(nova_entrada_obj)
         uploaded_files = request.files.getlist('anexos')
         for ficheiro in uploaded_files:
             if ficheiro and ficheiro.filename != '':
                 anexo_filename = secure_filename(ficheiro.filename)
                 ficheiro.save(os.path.join(app.config['UPLOAD_FOLDER'], anexo_filename))
-                novo_anexo = Anexo(filename=anexo_filename, entrada=nova)
+                novo_anexo = Anexo(filename=anexo_filename, entrada=nova_entrada_obj)
                 db.session.add(novo_anexo)
         db.session.commit()
-        flash(f"{nova.tipo} criado com sucesso!", 'success')
+        flash(f"{nova_entrada_obj.tipo} criado com sucesso!", 'success')
         return redirect(url_for('index'))
     return render_template('nova_entrada.html', form_data={})
 
@@ -217,10 +227,7 @@ def atualizar_status(id):
     if novo_status in ['Não iniciado', 'Em andamento', 'Concluído']:
         entrada.status = novo_status
         db.session.commit()
-        pedidos_nao_iniciados = Entrada.query.filter_by(tipo='Pedido', status='Não iniciado', arquivado=False).count()
-        pedidos_em_andamento = Entrada.query.filter_by(tipo='Pedido', status='Em andamento', arquivado=False).count()
-        pedidos_concluidos = Entrada.query.filter_by(tipo='Pedido', status='Concluído', arquivado=False).count()
-        novos_dados_dashboard = {'pedidos_nao_iniciados': pedidos_nao_iniciados, 'pedidos_em_andamento': pedidos_em_andamento, 'pedidos_concluidos': pedidos_concluidos}
+        novos_dados_dashboard = get_dashboard_data()
         return jsonify({'success': True, 'message': 'Status atualizado com sucesso!', 'dashboard': novos_dados_dashboard})
     return jsonify({'success': False, 'message': 'Status inválido.'}), 400
 
@@ -272,7 +279,6 @@ def pedidos_arquivados():
         base_query = base_query.filter_by(status=selected_status)
     pedidos = base_query.order_by(Entrada.numero_pedido).all()
     return render_template('pedidos_arquivados.html', pedidos=pedidos, search_query=search_query, selected_status=selected_status)
-
 
 @app.route('/gerir_usuarios', methods=['GET', 'POST'])
 @login_required

@@ -8,20 +8,70 @@
     <title>Gestão MMGlass</title>
     
     <style>
-        :root {--bg-color: #f8f9fc;--text-color: #5a5c69;--card-bg: #fff;--table-bg: #fff;--border-color: #e3e6f0;--navbar-bg: #f8f9fa; --navbar-text: #000;--dropdown-hover-bg: #f8f9fa;}
-        [data-theme="dark"] {--bg-color: #2c3034;--text-color: #e9ecef;--card-bg: #343a40;--table-bg: #343a40;--border-color: #495057;--navbar-bg: #212529; --navbar-text: #fff;--dropdown-hover-bg: #495057;}
-        body { background-color: var(--bg-color); color: var(--text-color); transition: background-color 0.2s ease, color 0.2s ease; }
-        .card { border: 1px solid var(--border-color); background-color: var(--card-bg); }
-        .table { background-color: var(--table-bg); color: var(--text-color); }
-        .table.rounded { overflow: hidden; }
-        .navbar { background-color: var(--navbar-bg) !important; }
-        .navbar-light .navbar-brand, .navbar-light .navbar-text { color: var(--navbar-text) !important; }
-        .table-uppercase td { text-transform: uppercase; }
-        .table .dropdown { position: static; }
-        .dropdown-menu { border-radius: 0.375rem; border-color: var(--border-color); }
-        [data-theme="dark"] .dropdown-menu { background-color: var(--card-bg); border-color: var(--border-color); }
-        [data-theme="dark"] .dropdown-item { color: var(--text-color); }
-        [data-theme="dark"] .dropdown-item:hover, [data-theme="dark"] .dropdown-item:focus { background-color: var(--dropdown-hover-bg); }
+        :root {
+            --bg-color: #f8f9fc;
+            --text-color: #5a5c69;
+            --card-bg: #fff;
+            --table-bg: #fff;
+            --border-color: #e3e6f0;
+            --navbar-bg: #f8f9fa;
+            --navbar-text: #000;
+            --dropdown-hover-bg: #f8f9fa;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #2c3034;
+            --text-color: #e9ecef;
+            --card-bg: #343a40;
+            --table-bg: #343a40;
+            --border-color: #495057;
+            --navbar-bg: #212529;
+            --navbar-text: #fff;
+            --dropdown-hover-bg: #495057;
+        }
+
+        body { 
+            background-color: var(--bg-color); 
+            color: var(--text-color);
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        .card { 
+            border: 1px solid var(--border-color);
+            background-color: var(--card-bg);
+        }
+        .table {
+            background-color: var(--table-bg);
+            color: var(--text-color);
+        }
+        .table.rounded {
+            overflow: hidden;
+        }
+        .navbar {
+            background-color: var(--navbar-bg) !important;
+        }
+        .navbar-light .navbar-brand, .navbar-light .navbar-text {
+             color: var(--navbar-text) !important;
+        }
+        .table-uppercase td {
+            text-transform: uppercase;
+        }
+        .table .dropdown {
+            position: static;
+        }
+        .dropdown-menu {
+            border-radius: 0.375rem;
+            border-color: var(--border-color);
+        }
+        [data-theme="dark"] .dropdown-menu {
+            background-color: var(--card-bg);
+            border-color: var(--border-color);
+        }
+        [data-theme="dark"] .dropdown-item {
+            color: var(--text-color);
+        }
+        [data-theme="dark"] .dropdown-item:hover, [data-theme="dark"] .dropdown-item:focus {
+            background-color: var(--dropdown-hover-bg);
+        }
         .modal-fullscreen .modal-dialog {max-width: 95%;margin: 1rem auto;}
         .modal-fullscreen .modal-content {height: calc(100vh - 3.5rem);display: flex;flex-direction: column;}
         .modal-fullscreen .modal-body {flex-grow: 1;overflow-y: auto;}
@@ -36,6 +86,23 @@
         [data-theme="dark"] .text-gray-800 { color: #f8f9fa!important; }
         [data-theme="dark"] .modal-content { background-color: var(--card-bg); color: var(--text-color); }
         [data-theme="dark"] .close { color: #fff; text-shadow: none; }
+
+        .sidebar-sticky {
+            position: -webkit-sticky;
+            position: sticky;
+            top: 1.5rem;
+        }
+        
+        /* NOVAS REGRAS PARA O DASHBOARD LATERAL NO TEMA ESCURO */
+        [data-theme="dark"] .card-header {
+            background-color: #343a40; /* Mesma cor de fundo do cartão */
+            border-bottom: 1px solid var(--border-color);
+        }
+        [data-theme="dark"] .list-group-item {
+            background-color: var(--card-bg); /* Fundo do cartão */
+            border-color: var(--border-color); /* Cor da borda do tema */
+        }
+
     </style>
 </head>
 <body>
@@ -61,7 +128,7 @@
             {% endif %}
         </div>
     </nav>
-    <div class="container">
+    <div class="container-fluid">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">{{ message }}<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>{% endfor %}{% endif %}
         {% endwith %}
