@@ -1,5 +1,6 @@
 # app.py
-
+import eventlet
+eventlet.monkey_patch() 
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
