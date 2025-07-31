@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="text-center" style="margin-top: 10vh;">
+    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo MMGlass" style="max-width: 400px; height: auto;">
+
+    <h1 class="mt-4">Bem-vindo ao Gestor MMGlass</h1>
+    <p class="lead text-muted">Esse programa está em sua versão de testes, sendo aprimorado todos os dias. Caso apresente algum erro contate o desenvolvedor</p>
+    
+    <hr class="my-4">
+
+    <p>Selecione uma ferramenta para começar:</p>
+    <div class="row justify-content-center">
+        <div class="col-md-4">
+            <a href="{{ url_for('painel_controle') }}" class="btn btn-primary btn-lg btn-block shadow-sm">
+                <i class="fas fa-tachometer-alt fa-2x mb-2"></i><br>
+                Painel de Controle
+            </a>
+        </div>
+        </div>
+</div>
+{% endblock %}

@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="pt" data-theme="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <title>Gestão MMGlass</title>
+    <link rel="icon" href="{{ url_for('static', filename='images/logo.png') }}" type="image/png">
+
+    <style>
+
+        .sidebar-sticky {
+            position: -webkit-sticky; /* Para compatibilidade com navegadores mais antigos */
+            position: sticky;
+            top: 1.5rem; /* Define a distância do topo da página */
+        }
+
+        /* Aumenta o tamanho da fonte dos números no dashboard lateral */
+        .sidebar-sticky .badge-pill {
+            font-size: 1rem; /* Pode ajustar este valor se quiser maior ou menor */
+        }
+
+        /* Variáveis de Cores para o Tema */
+        :root {
+            --bg-color: #f8f9fc; --text-color: #5a5c69; --card-bg: #fff; --table-bg: #fff;
+            --border-color: #e3e6f0; --navbar-bg: #f8f9fa; --navbar-text: #000; --dropdown-hover-bg: #f8f9fa;
+            --sidebar-bg: #4e73df; --sidebar-text: rgba(255,255,255,0.8); --sidebar-hover-bg: #4364c7;
+        }
+        [data-theme="dark"] {
+            --bg-color: #2c3034; --text-color: #e9ecef; --card-bg: #343a40; --table-bg: #343a40;
+            --border-color: #495057; --navbar-bg: #212529; --navbar-text: #fff; --dropdown-hover-bg: #495057;
+            --sidebar-bg: #212529; --sidebar-text: rgba(255,255,255,0.8); --sidebar-hover-bg: #343a40;
+        }
+
+        /* Estilos do Novo Layout com Sidebar */
+        #wrapper { display: flex; }
+        #sidebar-wrapper {
+            min-height: 100vh;
+            width: 250px;
+            background-color: var(--sidebar-bg);
+            transition: margin .25s ease-out;
+        }
+        #sidebar-wrapper .sidebar-heading {
+            padding: 0.875rem 1.25rem;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #fff;
+        }
+        #sidebar-wrapper .list-group {
+            width: 100%;
+        }
+        #sidebar-wrapper .list-group-item {
+            background-color: var(--sidebar-bg);
+            color: var(--sidebar-text);
+            border: none;
+            padding: 1rem 1.25rem;
+        }
+        #sidebar-wrapper .list-group-item:hover {
+            background-color: var(--sidebar-hover-bg);
+            color: #fff;
+        }
+        #page-content-wrapper {
+            min-width: 100vw;
+        }
+        #wrapper.toggled #sidebar-wrapper {
+            margin-left: -250px;
+        }
+        #wrapper.toggled #page-content-wrapper {
+            min-width: 0;
+            width: 100%;
+        }
+        @media(min-width: 768px) {
+            #sidebar-wrapper {
+                margin-left: 0;
+            }
+            #page-content-wrapper {
+                min-width: 0;
+                width: 100%;
+            }
+            #wrapper.toggled #sidebar-wrapper {
+                margin-left: -250px;
+            }
+        }
+
+        /* ### NOVOS ESTILOS PARA O CONTEÚDO DO CARROSSEL ### */
+        .carousel-item-flex {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        .carousel-image-container {
+            flex-grow: 1; /* Faz esta div ocupar todo o espaço vertical disponível */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden; /* Garante que a imagem não transborde */
+        }
+        .carousel-rotation-controls {
+            flex-shrink: 0; /* Impede que a div dos botões encolha */
+            padding-top: 0.5rem;
+        }
+        /* ### FIM DOS NOVOS ESTILOS ### */
+
+        /* ... (outros estilos como body, card, table, etc. continuam aqui) ... */
+        body { background-color: var(--bg-color); color: var(--text-color); transition: background-color 0.2s ease, color 0.2s ease; }
+        .card { border: 1px solid var(--border-color); background-color: var(--card-bg); }
+        .table { background-color: var(--table-bg); color: var(--text-color); }
+        .table.rounded { overflow: hidden; }
+        .navbar { background-color: var(--navbar-bg) !important; }
+        .navbar-light .navbar-brand, .navbar-light .navbar-text { color: var(--navbar-text) !important; }
+        .table-uppercase td { text-transform: uppercase; }
+        .table .dropdown { position: static; }
+        .dropdown-menu { border-radius: 0.375rem; border-color: var(--border-color); }
+        [data-theme="dark"] .dropdown-menu { background-color: var(--card-bg); border-color: var(--border-color); }
+        [data-theme="dark"] .dropdown-item { color: var(--text-color); }
+        [data-theme="dark"] .dropdown-item:hover, [data-theme="dark"] .dropdown-item:focus { background-color: var(--dropdown-hover-bg); }
+        [data-theme="dark"] .card-header, [data-theme="dark"] .list-group-item, [data-theme="dark"] .modal-content { background-color: var(--card-bg); border-color: var(--border-color); }
+        [data-theme="dark"] .close { color: #fff; text-shadow: none; }
+    </style>
+</head>
+<body>
+    <div class="d-flex" id="wrapper">
+        <div id="sidebar-wrapper">
+            <div class="sidebar-heading text-center">
+                <a href="{{ url_for('inicio') }}">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" width="50" height="50" alt="Logo MMGlass">
+                </a>
+            </div>
+            <div class="list-group list-group-flush">
+                <a href="{{ url_for('inicio') }}" class="list-group-item"><i class="fas fa-home fa-fw mr-2"></i>Início</a>
+                <a href="{{ url_for('painel_controle') }}" class="list-group-item"><i class="fas fa-tachometer-alt fa-fw mr-2"></i>Painel de Controle</a>
+                <a href="{{ url_for('cadastro_clientes') }}" class="list-group-item"><i class="fas fa-users fa-fw mr-2"></i>Cadastro de Clientes</a>
+                <a href="{{ url_for('relatorio_pedidos') }}" class="list-group-item"><i class="fas fa-file-invoice fa-fw mr-2"></i>Relatório de Pedidos</a>
+                <a href="{{ url_for('relatorio_romaneio') }}" class="list-group-item"><i class="fas fa-file-pdf fa-fw mr-2"></i>Relatório de Romaneio</a>
+            </div>
+        </div>
+        <div id="page-content-wrapper">
+            <nav class="navbar navbar-expand-lg navbar-light border-bottom">
+                <button class="btn btn-primary" id="menu-toggle"><i class="fas fa-bars"></i></button>
+
+                <a class="navbar-brand ml-3" href="{{ url_for('inicio') }}">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" width="30" height="30" class="d-inline-block align-top" alt="Logo MMGlass">
+                    MMGlass
+                </a>
+
+                <div class="collapse navbar-collapse">
+                    <ul class="navbar-nav ml-auto mt-2 mt-lg-0">
+                        {% if current_user.is_authenticated %}
+                            {% if current_user.is_admin %}
+                            <li class="nav-item"><a href="{{ url_for('gerir_usuarios') }}" class="btn btn-outline-secondary btn-sm mr-3" title="Gerir Utilizadores"><i class="fas fa-users-cog"></i></a></li>
+                            {% endif %}
+                            <li class="nav-item"><span class="navbar-text mr-3">Olá, {{ current_user.username }}</span></li>
+                            <li class="nav-item">
+                                <div class="btn-group btn-group-sm mr-3" role="group">
+                                    <button type="button" class="btn btn-outline-secondary" id="theme-light" title="Tema Claro"><i class="fas fa-sun"></i></button>
+                                    <button type="button" class="btn btn-outline-secondary" id="theme-dark" title="Tema Escuro"><i class="fas fa-moon"></i></button>
+                                    <button type="button" class="btn btn-outline-secondary" id="theme-auto" title="Tema do Sistema"><i class="fas fa-desktop"></i></button>
+                                </div>
+                            </li>
+                            <li class="nav-item"><a href="{{ url_for('logout') }}" class="btn btn-outline-danger btn-sm">Sair <i class="fas fa-sign-out-alt"></i></a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </nav>
+
+            <div class="container-fluid pt-4">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">{{ message }}<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>{% endfor %}{% endif %}
+                {% endwith %}
+                
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+        </div>
+    {% block modals %}{% endblock %}
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
+
+    <script>
+    // Script do Tema (inalterado)
+    (() => {'use strict';const getStoredTheme=()=>localStorage.getItem('theme');const setStoredTheme=t=>localStorage.setItem('theme',t);const getPreferredTheme=()=>{const t=getStoredTheme();if(t)return t;return window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'};const updateTableHeaders=t=>{document.querySelectorAll('.thead-light, .thead-dark').forEach(e=>{'dark'===t?(e.classList.remove('thead-light'),e.classList.add('thead-dark')):(e.classList.remove('thead-dark'),e.classList.add('thead-light'))})};const setTheme=t=>{document.documentElement.setAttribute('data-theme',t);updateTableHeaders(t)};setTheme(getPreferredTheme());window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{'light'!==getStoredTheme()&&'dark'!==getStoredTheme()&&setTheme(getPreferredTheme())});document.addEventListener('DOMContentLoaded',()=>{document.getElementById('theme-light').addEventListener('click',()=>{setTheme('light');setStoredTheme('light')});document.getElementById('theme-dark').addEventListener('click',()=>{setTheme('dark');setStoredTheme('dark')});document.getElementById('theme-auto').addEventListener('click',()=>{localStorage.removeItem('theme');setTheme(getPreferredTheme())})})})();
+
+    document.addEventListener("DOMContentLoaded", function() {
+        var menuToggle = document.getElementById("menu-toggle");
+        if (menuToggle) {
+            menuToggle.addEventListener("click", function(e) {
+                e.preventDefault();
+                document.getElementById("wrapper").classList.toggle("toggled");
+            });
+        }
+
+        // Função para ativar o Panzoom com a lógica de rotação integrada
+        function initializePanzoom(element) {
+            if (element && !element.panzoom) {
+                const panzoom = new Panzoom(element, {
+                    maxScale: 10,
+                    minScale: 0.7,
+                    contain: 'outside',
+                    // Personaliza como as transformações (zoom, pan, rotação) são aplicadas
+                    setTransform: (elem, { scale, x, y }) => {
+                        const rotation = parseInt(elem.dataset.rotation || 0);
+                        // Combina a rotação com o zoom e o pan numa única instrução
+                        elem.style.transform = `rotate(${rotation}deg) scale(${scale}) translate(${x}px, ${y}px)`;
+                    }
+                });
+                element.panzoom = panzoom;
+                element.parentElement.addEventListener('wheel', panzoom.zoomWithWheel, { passive: false });
+            }
+        }
+
+        // Lógica de Rotação que "conversa" com o Panzoom
+        document.querySelectorAll('.rotate-left').forEach(button => {
+            button.addEventListener('click', function() {
+                const carouselItem = this.closest('.carousel-item');
+                const img = carouselItem.querySelector('.panzoom-image');
+                if (img) {
+                    let rotation = parseInt(img.dataset.rotation || 0);
+                    rotation -= 90;
+                    img.dataset.rotation = rotation;
+                    // Força o Panzoom a redesenhar com a nova rotação
+                    if (img.panzoom) {
+                        img.panzoom.zoom(img.panzoom.getScale(), { animate: false });
+                    }
+                }
+            });
+        });
+
+        document.querySelectorAll('.rotate-right').forEach(button => {
+            button.addEventListener('click', function() {
+                const carouselItem = this.closest('.carousel-item');
+                const img = carouselItem.querySelector('.panzoom-image');
+                if (img && img.panzoom) {
+                    let rotation = parseInt(img.dataset.rotation || 0);
+                    rotation += 90;
+                    img.dataset.rotation = rotation;
+                    // Força o Panzoom a redesenhar com a nova rotação
+                    img.panzoom.zoom(img.panzoom.getScale(), { animate: false });
+                }
+            });
+        });
+
+        // Lógica de ativação e destruição do Zoom com jQuery
+        if (window.jQuery) {
+            $('div[id^="galeriaAnexos-"]').on('shown.bs.modal', function () {
+                const activeImage = $(this).find('.carousel-item.active .panzoom-image').get(0);
+                initializePanzoom(activeImage);
+            });
+            $('div[id^="carouselAnexos-"]').on('slid.bs.carousel', function () {
+                // Destrói o zoom da imagem anterior para evitar conflitos
+                const previousImage = $(this).find('.carousel-item:not(.active) .panzoom-image').get(0);
+                if (previousImage && previousImage.panzoom) {
+                    previousImage.panzoom.destroy();
+                    previousImage.panzoom = null;
+                }
+                const activeImage = $(this).find('.carousel-item.active .panzoom-image').get(0);
+                initializePanzoom(activeImage);
+            });
+            $('div[id^="galeriaAnexos-"]').on('hidden.bs.modal', function () {
+                $(this).find('.panzoom-image').each(function() {
+                    this.dataset.rotation = 0;
+                    if (this.panzoom) {
+                        this.panzoom.destroy();
+                        this.panzoom = null;
+                    }
+                    this.style.transform = 'rotate(0deg) scale(1) translate(0px, 0px)';
+                });
+            });
+        }
+    });
+    </script>
+
+    {% block scripts %}{% endblock %}
+
+</body>
+</html>
