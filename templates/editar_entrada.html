@@ -49,15 +49,9 @@
                         {% for anexo in entrada.anexos %}
                             <li class="list-group-item d-flex justify-content-between align-items-center">
                                 <a href="{{ url_for('uploaded_file', filename=anexo.filename) }}" target="_blank">{{ anexo.filename }}</a>
-<<<<<<< HEAD
                                 <a href="{{ url_for('excluir_anexo', anexo_id=anexo.id) }}" class="btn btn-danger btn-sm" onclick="return confirm('Tem a certeza que deseja excluir este anexo?');">
                                     <i class="fas fa-trash-alt"></i>
                                 </a>
-=======
-                                <form action="{{ url_for('excluir_anexo', anexo_id=anexo.id) }}" method="POST" onsubmit="return confirm('Tem a certeza que deseja excluir este anexo?');">
-                                    <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash-alt"></i></button>
-                                </form>
->>>>>>> 2f9e4c70cabf2d1dca0b2de694950b299b9b49a4
                             </li>
                         {% endfor %}
                         </ul>
@@ -73,10 +67,6 @@
         </div>
         <hr>
         <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Salvar Alterações</button>
-<<<<<<< HEAD
         <a href="{{ url_for('painel_controle') }}" class="btn btn-secondary">Cancelar</a>
-=======
-        <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancelar</a>
->>>>>>> 2f9e4c70cabf2d1dca0b2de694950b299b9b49a4
     </form>
 {% endblock %}

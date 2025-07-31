@@ -3,11 +3,7 @@
 {% block content %}
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1>Arquivados</h1>
-<<<<<<< HEAD
         <a href="{{ url_for('painel_controle') }}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Voltar ao Painel Principal</a>
-=======
-        <a href="{{ url_for('index') }}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Voltar ao Painel Principal</a>
->>>>>>> 2f9e4c70cabf2d1dca0b2de694950b299b9b49a4
     </div>
 
     <div class="row">
@@ -25,7 +21,6 @@
                 <tbody>
                     {% for entrada in pedidos %}
                     <tr>
-<<<<<<< HEAD
                         <td>
                             <button type="button" class="btn btn-outline-secondary btn-sm" style="color: var(--text-color);" data-toggle="modal" data-target="#detalhesModal-{{ entrada.id }}">
                                 {% if entrada.numero_pedido > 1000000000 and entrada.tipo == 'Orçamento' %}
@@ -35,9 +30,6 @@
                                 {% endif %}
                             </button>
                         </td>
-=======
-                        <td>{{ entrada.numero_pedido }}</td>
->>>>>>> 2f9e4c70cabf2d1dca0b2de694950b299b9b49a4
                         <td>{{ entrada.cliente }}</td>
                         <td>
                             {% set status_color = 'secondary' %}
@@ -80,7 +72,6 @@
                 <tbody>
                     {% for entrada in orcamentos %}
                     <tr>
-<<<<<<< HEAD
                         <td>
                             <button type="button" class="btn btn-outline-secondary btn-sm" style="color: var(--text-color);" data-toggle="modal" data-target="#detalhesModal-{{ entrada.id }}">
                                 {% if entrada.numero_pedido > 1000000000 and entrada.tipo == 'Orçamento' %}
@@ -90,9 +81,6 @@
                                 {% endif %}
                             </button>
                         </td>
-=======
-                        <td>{{ entrada.numero_pedido }}</td>
->>>>>>> 2f9e4c70cabf2d1dca0b2de694950b299b9b49a4
                         <td>{{ entrada.cliente }}</td>
                         <td>
                             {% set status_color = 'secondary' %}
@@ -121,7 +109,6 @@
             </table>
         </div>
     </div>
-<<<<<<< HEAD
 {% endblock %}
 
 {% block modals %}
@@ -168,6 +155,4 @@
         </div>
     </div>
     {% endfor %}
-=======
->>>>>>> 2f9e4c70cabf2d1dca0b2de694950b299b9b49a4
 {% endblock %}
