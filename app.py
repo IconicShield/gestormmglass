@@ -1,5 +1,5 @@
 # app.py
-import eventlet
+import eventlet # type: ignore
 eventlet.monkey_patch() 
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
@@ -13,7 +13,9 @@ from sqlalchemy import or_, cast
 from functools import wraps
 import click
 from getpass import getpass
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO # type: ignore
+import fitz # type: ignore # PyMuPDF
+import re # Biblioteca para expressões regulares (procurar padrões de texto)
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__)
@@ -72,7 +74,7 @@ def admin_required(f):
     def decorated_function(*args, **kwargs):
         if not current_user.is_admin:
             flash('Acesso negado. Apenas administradores podem aceder a esta página.', 'danger')
-            return redirect(url_for('index'))
+            return redirect(url_for('inicio'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -98,14 +100,14 @@ def get_dashboard_data():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('index'))
+        return redirect(url_for('inicio'))
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
         user = User.query.filter_by(username=username).first()
         if user and bcrypt.check_password_hash(user.password_hash, password):
             login_user(user)
-            return redirect(url_for('index'))
+            return redirect(url_for('inicio'))
         else:
             flash('Login sem sucesso. Verifique o utilizador e a senha.', 'danger')
     return render_template('login.html')
@@ -118,10 +120,15 @@ def logout():
     flash('Logout efetuado com sucesso.', 'success')
     return redirect(url_for('login'))
 
-
 @app.route('/')
 @login_required
-def index():
+def inicio():
+    """Renderiza a nova página de início."""
+    return render_template('inicio.html')
+
+@app.route('/painel')
+@login_required
+def painel_controle():
     search_query = request.args.get('q', '')
     selected_status = request.args.get('status', '')
     pedidos_base_query = Entrada.query.filter_by(tipo='Pedido', arquivado=False)
@@ -136,22 +143,47 @@ def index():
     pedidos = pedidos_base_query.order_by(Entrada.numero_pedido).all()
     orcamentos = orcamentos_base_query.order_by(Entrada.numero_pedido).all()
     dashboard_data = get_dashboard_data()
-    return render_template('index.html', dashboard=dashboard_data, pedidos=pedidos, orcamentos=orcamentos, search_query=search_query, selected_status=selected_status)
-
+    return render_template('painel_controle.html', dashboard=dashboard_data, pedidos=pedidos, orcamentos=orcamentos, search_query=search_query, selected_status=selected_status)
 
 @app.route('/novo', methods=['GET', 'POST'])
 @login_required
 def nova_entrada():
     if request.method == 'POST':
+        tipo_entrada = request.form.get('tipo')
         numero_pedido_str = request.form.get('numero_pedido')
-        if not numero_pedido_str.isdigit():
-            flash('O N° de entrada deve conter apenas números.', 'danger')
+
+        # Se for um Pedido, o número continua a ser obrigatório
+        if tipo_entrada == 'Pedido' and not numero_pedido_str:
+            flash('O N° da Entrada é obrigatório para Pedidos.', 'danger')
             return render_template('nova_entrada.html', form_data=request.form)
-        numero_pedido = int(numero_pedido_str)
+
+        # Se for um Orçamento e o campo estiver vazio, geramos um número
+        if tipo_entrada == 'Orçamento' and not numero_pedido_str:
+            # Usamos o timestamp para garantir um número único
+            numero_pedido = int(datetime.now().timestamp())
+        else:
+            # Se o número foi preenchido, validamos como antes
+            if not numero_pedido_str.isdigit():
+                flash('O N° de entrada deve conter apenas números.', 'danger')
+                return render_template('nova_entrada.html', form_data=request.form)
+            numero_pedido = int(numero_pedido_str)
+
+        # Verifica se o número (seja o digitado ou o gerado) já existe
         if Entrada.query.filter_by(numero_pedido=numero_pedido).first():
             flash(f'O N° de entrada {numero_pedido} já existe. Tente outro.', 'danger')
             return render_template('nova_entrada.html', form_data=request.form)
-        nova_entrada_obj = Entrada(tipo=request.form.get('tipo'), numero_pedido=numero_pedido, cliente=request.form.get('cliente'), status=request.form.get('status'), descricao=request.form.get('descricao'), observacoes=request.form.get('observacoes'))
+
+        nova_entrada_obj = Entrada(
+            tipo=tipo_entrada,
+            numero_pedido=numero_pedido,
+            cliente=request.form.get('cliente'),
+            status=request.form.get('status'),
+            descricao=request.form.get('descricao'),
+            observacoes=request.form.get('observacoes')
+        )
+
+        # ... (o resto da função para salvar anexos e emitir o sinal continua igual)
+
         db.session.add(nova_entrada_obj)
         uploaded_files = request.files.getlist('anexos')
         for ficheiro in uploaded_files:
@@ -163,9 +195,9 @@ def nova_entrada():
         db.session.commit()
         socketio.emit('update_data')
         flash(f"{nova_entrada_obj.tipo} criado com sucesso!", 'success')
-        return redirect(url_for('index'))
-    return render_template('nova_entrada.html', form_data={})
+        return redirect(url_for('painel_controle'))
 
+    return render_template('nova_entrada.html', form_data={})
 
 @app.route('/editar/<int:id>', methods=['GET', 'POST'])
 @login_required
@@ -188,11 +220,10 @@ def editar_entrada(id):
         db.session.commit()
         socketio.emit('update_data')
         flash(f'{entrada.tipo} atualizado com sucesso!', 'success')
-        return redirect(url_for('editar_entrada', id=id))
+        return redirect(url_for('painel_controle'))
     return render_template('editar_entrada.html', entrada=entrada)
 
-
-@app.route('/excluir-anexo/<int:anexo_id>', methods=['POST'])
+@app.route('/excluir-anexo/<int:anexo_id>', methods=['GET', 'POST'])
 @login_required
 def excluir_anexo(anexo_id):
     anexo = Anexo.query.get_or_404(anexo_id)
@@ -206,7 +237,6 @@ def excluir_anexo(anexo_id):
     socketio.emit('update_data')
     flash('Anexo excluído com sucesso.', 'success')
     return redirect(url_for('editar_entrada', id=entrada_id))
-
 
 @app.route('/excluir/<int:id>', methods=['POST'])
 @login_required
@@ -225,8 +255,7 @@ def excluir_entrada(id):
         flash(f'{tipo_entrada} arquivado foi excluído permanentemente!', 'danger')
         return redirect(url_for('pedidos_arquivados'))
     flash(f'{tipo_entrada} foi excluído com sucesso!', 'danger')
-    return redirect(url_for('index'))
-
+    return redirect(url_for('inicio'))
 
 @app.route('/atualizar-status/<int:id>', methods=['POST'])
 @login_required
@@ -242,7 +271,6 @@ def atualizar_status(id):
         return jsonify({'success': True, 'message': 'Status atualizado com sucesso!', 'dashboard': novos_dados_dashboard})
     return jsonify({'success': False, 'message': 'Status inválido.'}), 400
 
-
 @app.route('/converter/<int:id>', methods=['POST'])
 @login_required
 def converter_para_pedido(id):
@@ -255,8 +283,7 @@ def converter_para_pedido(id):
         flash(f"Orçamento #{orcamento.numero_pedido} foi convertido em Pedido com sucesso!", 'success')
     else:
         flash('Esta entrada já é um Pedido.', 'warning')
-    return redirect(url_for('index'))
-
+    return redirect(url_for('inicio'))
 
 @app.route('/arquivar/<int:id>', methods=['POST'])
 @login_required
@@ -266,8 +293,7 @@ def arquivar_entrada(id):
     db.session.commit()
     socketio.emit('update_data')
     flash(f'{entrada.tipo} #{entrada.numero_pedido} foi arquivado com sucesso.', 'success')
-    return redirect(url_for('index'))
-
+    return redirect(url_for('inicio'))
 
 @app.route('/desarquivar/<int:id>', methods=['POST'])
 @login_required
@@ -278,7 +304,6 @@ def desarquivar_entrada(id):
     socketio.emit('update_data')
     flash(f'{entrada.tipo} #{entrada.numero_pedido} foi restaurado com sucesso.', 'success')
     return redirect(url_for('pedidos_arquivados'))
-
 
 @app.route('/arquivados')
 @login_required
@@ -346,6 +371,110 @@ def uploaded_file(filename):
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     return response
 
+@app.route('/relatorio-romaneio', methods=['GET', 'POST'])
+@login_required
+def relatorio_romaneio():
+    if request.method == 'POST':
+        if 'pdf_file' not in request.files:
+            flash('Nenhum ficheiro selecionado.', 'warning')
+            return redirect(request.url)
+        
+        ficheiro = request.files['pdf_file']
+        
+        if ficheiro.filename == '':
+            flash('Nenhum ficheiro selecionado.', 'warning')
+            return redirect(request.url)
+        
+        if ficheiro and ficheiro.filename.lower().endswith('.pdf'):
+            try:
+                pdf_bytes = ficheiro.read()
+                texto_completo = ""
+                with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+                    for page in doc:
+                        # Extrai o texto mantendo algum layout básico
+                        texto_completo += page.get_text()
+
+                # --- LÓGICA DE EXTRAÇÃO AVANÇADA ---
+                
+                relatorios_extraidos = []
+                # Divide o documento em blocos de pedidos, usando "Pedido Pedido Cli." como separador
+                blocos_pedidos = re.split(r'Pedido\s+Pedido Cli\.', texto_completo, flags=re.IGNORECASE)
+
+                for bloco in blocos_pedidos[1:]: # Ignora o que vem antes do primeiro pedido
+                    
+                    # 1. Extrai o NOME DO CLIENTE do texto que vem ANTES do cabeçalho do pedido
+                    # Padrão: Procura por uma linha com letras maiúsculas que termina com " - VID."
+                    cliente_match = re.search(r'\n([A-Z\s\d\.\-]+-\s*VID\..*?)\n', bloco)
+                    nome_cliente = cliente_match.group(1).strip() if cliente_match else "Cliente não encontrado"
+
+                    # 2. Extrai os dados do cabeçalho do pedido
+                    # Padrão: Procura pela linha de valores que vem logo após o cabeçalho
+                    padrao_cabecalho = re.search(r'Tipo\s+Funcionário\s+Data Pedido\s+Data Entrega\s+Peso\s+m²\s+Total\n(.*?)\n', bloco, re.IGNORECASE | re.DOTALL)
+                    dados_cabecalho = {}
+                    if padrao_cabecalho:
+                        # Divide a linha de valores por múltiplos espaços
+                        valores = re.split(r'\s{2,}', padrao_cabecalho.group(1).strip())
+                        if len(valores) >= 9:
+                            dados_cabecalho = {
+                                'pedido': valores[0], 'pedido_cli': valores[1], 'tipo': valores[2],
+                                'funcionario': valores[3], 'data_pedido': valores[4], 'data_entrega': valores[5],
+                                'peso': valores[6], 'm2': valores[7], 'total': valores[8],
+                                'cliente': nome_cliente # Adiciona o cliente que encontrámos
+                            }
+
+                    # 3. Extrai a tabela de produtos
+                    produtos = []
+                    # Padrão para encontrar uma linha de produto, que pode ser complexa
+                    padrao_produtos = re.compile(r'(\d{4,})\s+(.*?)\s+OS:(\d+)\s+(\d+x\d+)\s+(\d+)\s+([\d,]+)', re.DOTALL)
+                    
+                    seccao_produtos_match = re.search(r'Cod\s+Produto\s+LarguraxAltura(.*?)Resumo:', bloco, re.IGNORECASE | re.DOTALL)
+                    if seccao_produtos_match:
+                        texto_produtos = seccao_produtos_match.group(1)
+                        linhas_produtos = padrao_produtos.findall(texto_produtos)
+                        for linha in linhas_produtos:
+                            produto = {
+                                'cod': linha[0].strip(),
+                                'produto': linha[1].replace('\n', ' ').strip(),
+                                'os': linha[2].strip(),
+                                'dimensoes': linha[3].strip(),
+                                'qtde': linha[4].strip(),
+                                'm2': linha[5].strip()
+                            }
+                            produtos.append(produto)
+                    
+                    if dados_cabecalho:
+                        relatorios_extraidos.append({
+                            'cabecalho': dados_cabecalho,
+                            'produtos': produtos
+                        })
+
+                if not relatorios_extraidos:
+                    flash('Nenhum dado de pedido válido foi encontrado. O formato do PDF pode ser diferente do esperado.', 'warning')
+                    return render_template('relatorio_romaneio.html')
+
+                flash(f'{len(relatorios_extraidos)} pedido(s) processado(s) com sucesso!', 'success')
+                return render_template('relatorio_romaneio.html', relatorios=relatorios_extraidos)
+
+            except Exception as e:
+                flash(f'Ocorreu um erro inesperado ao processar o PDF: {e}', 'danger')
+                return redirect(request.url)
+
+    return render_template('relatorio_romaneio.html')
+
+@app.route('/relatorio-pedidos')
+@login_required
+def relatorio_pedidos():
+    """Exibe a página da nova ferramenta de Relatório de Pedidos."""
+    # Por enquanto, esta função apenas renderiza a página.
+    # A lógica de upload e análise de PDF será adicionada depois.
+    return render_template('relatorio_pedidos.html')
+
+@app.route('/cadastro-clientes')
+@login_required
+def cadastro_clientes():
+    """Exibe a página da nova ferramenta de Cadastro de Clientes."""
+    # A lógica de cadastro será adicionada futuramente.
+    return render_template('cadastro_clientes.html')
 
 @app.cli.command("init-db")
 def init_db_command():
@@ -366,7 +495,6 @@ def create_admin_command():
     db.session.add(new_user)
     db.session.commit()
     print(f"Utilizador ADMINISTRADOR '{username}' criado com sucesso!")
-
 
 if __name__ == '__main__':
     app.run()

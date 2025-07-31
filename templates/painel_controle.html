@@ -1,18 +1,53 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h1>Painel de Controle</h1>
-    <div>
-        <a href="{{ url_for('pedidos_arquivados') }}" class="btn btn-outline-secondary"><i class="fas fa-archive"></i> Ver Arquivados</a>
-        <a href="{{ url_for('nova_entrada') }}" class="btn btn-primary shadow-sm"><i class="fas fa-plus fa-sm"></i> Nova Entrada</a>
-    </div>
-</div>
 
 <div class="row">
+
     <div class="col-lg-9">
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1>Painel de Controle</h1>
+            <div>
+                <a href="{{ url_for('pedidos_arquivados') }}" class="btn btn-outline-secondary"><i class="fas fa-archive"></i> Ver Arquivados</a>
+                <a href="{{ url_for('nova_entrada') }}" class="btn btn-primary shadow-sm"><i class="fas fa-plus fa-sm"></i> Nova Entrada</a>
+            </div>
+        </div>
+
         <div class="card shadow mb-4">
-            <div class="card-body"><form method="GET" action="{{ url_for('index') }}"><div class="form-row align-items-end"><div class="col-md-6"><div class="form-group"><label for="q">Buscar (N°, Cliente, Descrição)</label><input type="text" class="form-control" id="q" name="q" value="{{ search_query }}"></div></div><div class="col-md-4"><div class="form-group"><label for="status">Filtrar por Status</label><select id="status" name="status" class="form-control"><option value="">Todos</option><option value="Não iniciado" {% if selected_status == 'Não iniciado' %}selected{% endif %}>Não iniciado</option><option value="Em andamento" {% if selected_status == 'Em andamento' %}selected{% endif %}>Em andamento</option><option value="Concluído" {% if selected_status == 'Concluído' %}selected{% endif %}>Concluído</option></select></div></div><div class="col-md-2"><div class="form-group"><button type="submit" class="btn btn-primary btn-block"><i class="fas fa-filter"></i> Filtrar</button><a href="{{ url_for('index') }}" class="btn btn-secondary btn-block mt-2">Limpar</a></div></div></div></form></div>
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('painel_controle') }}">
+                    <div class="form-row align-items-end">
+                        <div class="col-md-6">
+                            <div class="form-group mb-0">
+                                <label for="q" class="small">Buscar (N°, Cliente, Descrição)</label>
+                                <input type="text" class="form-control form-control-sm" id="q" name="q" value="{{ search_query }}">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group mb-0">
+                                <label for="status" class="small">Filtrar por Status</label>
+                                <select id="status" name="status" class="form-control form-control-sm">
+                                    <option value="">Todos</option>
+                                    <option value="Não iniciado" {% if selected_status == 'Não iniciado' %}selected{% endif %}>Não iniciado</option>
+                                    <option value="Em andamento" {% if selected_status == 'Em andamento' %}selected{% endif %}>Em andamento</option>
+                                    <option value="Concluído" {% if selected_status == 'Concluído' %}selected{% endif %}>Concluído</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-1">
+                            <div class="form-group mb-0">
+                                <button type="submit" class="btn btn-primary btn-sm btn-block"><i class="fas fa-filter"></i></button>
+                            </div>
+                        </div>
+                        <div class="col-md-1">
+                            <div class="form-group mb-0">
+                                <a href="{{ url_for('painel_controle') }}" class="btn btn-secondary btn-sm btn-block"><i class="fas fa-eraser"></i></a>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
         </div>
         <h3><i class="fas fa-box-open"></i> Pedidos</h3>
         <table class="table table-hover table-sm shadow-sm rounded table-uppercase">
@@ -56,7 +91,12 @@
                     <td>{{ entrada.data_registro.strftime('%d/%m/%Y') }}</td>
                     <td>
                         <button type="button" class="btn btn-outline-secondary btn-sm" style="color: var(--text-color);" data-toggle="modal" data-target="#detalhesModal-{{ entrada.id }}">
-                            {{ entrada.numero_pedido }}
+                            {# Se o número for maior que 1 bilhão, é um timestamp gerado automaticamente #}
+                            {% if entrada.numero_pedido > 1000000000 %}
+                                <i class="fas fa-search"></i> Detalhes
+                            {% else %}
+                                {{ entrada.numero_pedido }}
+                            {% endif %}
                         </button>
                     </td>
                     <td>{{ entrada.cliente }}</td>
@@ -88,31 +128,29 @@
                 {% endfor %}
             </tbody>
         </table>
-    </div>
-
-    <div class="col-lg-3">
-        <div class="sidebar-sticky">
-            <div class="card shadow-sm mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center"><h6 class="mb-0 font-weight-bold">Resumo de Pedidos</h6><i class="fas fa-box text-gray-300"></i></div>
-                <ul class="list-group list-group-flush">
-                    <li class="list-group-item d-flex justify-content-between align-items-center">Total<span id="dash-pedidos-total" class="badge badge-primary badge-pill">{{ dashboard.pedidos.total }}</span></li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">Não Iniciados<span id="dash-pedidos-nao-iniciado" class="badge badge-danger badge-pill">{{ dashboard.pedidos.nao_iniciado }}</span></li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">Em Andamento<span id="dash-pedidos-em-andamento" class="badge badge-warning badge-pill">{{ dashboard.pedidos.em_andamento }}</span></li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">Concluídos<span id="dash-pedidos-concluido" class="badge badge-success badge-pill">{{ dashboard.pedidos.concluido }}</span></li>
-                </ul>
-            </div>
-            <div class="card shadow-sm mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center"><h6 class="mb-0 font-weight-bold">Resumo de Orçamentos</h6><i class="fas fa-file-invoice-dollar text-gray-300"></i></div>
-                <ul class="list-group list-group-flush">
-                    <li class="list-group-item d-flex justify-content-between align-items-center">Total<span id="dash-orcamentos-total" class="badge badge-primary badge-pill">{{ dashboard.orcamentos.total }}</span></li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">Não Iniciados<span id="dash-orcamentos-nao-iniciado" class="badge badge-danger badge-pill">{{ dashboard.orcamentos.nao_iniciado }}</span></li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">Em Andamento<span id="dash-orcamentos-em-andamento" class="badge badge-warning badge-pill">{{ dashboard.orcamentos.em_andamento }}</span></li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">Concluídos<span id="dash-orcamentos-concluido" class="badge badge-success badge-pill">{{ dashboard.orcamentos.concluido }}</span></li>
-                </ul>
+        </div> <div class="col-lg-3">
+            <div class="sidebar-sticky">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center"><h6 class="mb-0 font-weight-bold">Resumo de Pedidos</h6><i class="fas fa-box text-gray-300"></i></div>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">Total<span id="dash-pedidos-total" class="badge badge-primary badge-pill">{{ dashboard.pedidos.total }}</span></li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">Não Iniciados<span id="dash-pedidos-nao-iniciado" class="badge badge-danger badge-pill">{{ dashboard.pedidos.nao_iniciado }}</span></li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">Em Andamento<span id="dash-pedidos-em-andamento" class="badge badge-warning badge-pill">{{ dashboard.pedidos.em_andamento }}</span></li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">Concluídos<span id="dash-pedidos-concluido" class="badge badge-success badge-pill">{{ dashboard.pedidos.concluido }}</span></li>
+                    </ul>
+                </div>
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center"><h6 class="mb-0 font-weight-bold">Resumo de Orçamentos</h6><i class="fas fa-file-invoice-dollar text-gray-300"></i></div>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item d-flex justify-content-between align-items-center">Total<span id="dash-orcamentos-total" class="badge badge-primary badge-pill">{{ dashboard.orcamentos.total }}</span></li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">Não Iniciados<span id="dash-orcamentos-nao-iniciado" class="badge badge-danger badge-pill">{{ dashboard.orcamentos.nao_iniciado }}</span></li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">Em Andamento<span id="dash-orcamentos-em-andamento" class="badge badge-warning badge-pill">{{ dashboard.orcamentos.em_andamento }}</span></li>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">Concluídos<span id="dash-orcamentos-concluido" class="badge badge-success badge-pill">{{ dashboard.orcamentos.concluido }}</span></li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
-</div>
 {% endblock %}
 
 {% block modals %}
@@ -171,21 +209,22 @@
                         <div id="carouselAnexos-{{ entrada.id }}" class="carousel slide h-100" data-ride="carousel" data-interval="false">
                             <div class="carousel-inner h-100">
                                 {% for anexo in entrada.anexos %}
-                                <div class="carousel-item text-center h-100 {% if loop.first %}active{% endif %}">
+                                <div class="carousel-item text-center h-100 carousel-item-flex {% if loop.first %}active{% endif %}">
+                                    <div class="carousel-image-container">
+                                        {% if anexo.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')) %}
+                                            <img src="{{ url_for('uploaded_file', filename=anexo.filename) }}" class="d-block w-100 h-100 panzoom-image" style="object-fit: contain;" alt="{{ anexo.filename }}" data-rotation="0">
+                                        {% elif anexo.filename.lower().endswith('.pdf') %}
+                                            <iframe src="{{ url_for('uploaded_file', filename=anexo.filename) }}" width="100%" height="100%" style="border: none;"></iframe>
+                                        {% else %}
+                                        <div class="d-flex justify-content-center align-items-center h-100 p-5"><div class="text-center"><i class="fas fa-file-alt fa-10x text-muted"></i><p class="mt-3">Não é possível pré-visualizar.</p><a href="{{ url_for('uploaded_file', filename=anexo.filename) }}" class="btn btn-primary" target="_blank">Descarregar</a></div></div>
+                                        {% endif %}
+                                    </div>
                                     {% if anexo.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')) %}
-                                        <img src="{{ url_for('uploaded_file', filename=anexo.filename) }}" class="d-block w-100 h-100" style="object-fit: contain;" alt="{{ anexo.filename }}">
-                                    {% elif anexo.filename.lower().endswith('.pdf') %}
-                                        <iframe src="{{ url_for('uploaded_file', filename=anexo.filename) }}" width="100%" height="100%" style="border: none;"></iframe>
-                                    {% else %}
-                                        <div class="d-flex justify-content-center align-items-center h-100 p-5">
-                                            <div class="text-center">
-                                                <i class="fas fa-file-alt fa-10x text-muted"></i>
-                                                <p class="mt-3">Não é possível pré-visualizar.</p>
-                                                <a href="{{ url_for('uploaded_file', filename=anexo.filename) }}" class="btn btn-primary" target="_blank">Descarregar</a>
-                                            </div>
-                                        </div>
+                                    <div class="carousel-rotation-controls">
+                                        <button type="button" class="btn btn-secondary btn-sm rotate-left"><i class="fas fa-undo"></i> Rotacionar Esquerda</button>
+                                        <button type="button" class="btn btn-secondary btn-sm ml-2 rotate-right"><i class="fas fa-redo"></i> Rotacionar Direita</button>
+                                    </div>
                                     {% endif %}
-                                    <div class="carousel-caption d-none d-md-block bg-dark rounded p-1" style="opacity: 0.7;"><p class="mb-0">{{ anexo.filename }}</p></div>
                                 </div>
                                 {% endfor %}
                             </div>
