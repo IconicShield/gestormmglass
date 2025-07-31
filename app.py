@@ -1,5 +1,9 @@
 # app.py
+<<<<<<< HEAD
 import eventlet # type: ignore
+=======
+import eventlet
+>>>>>>> 2f9e4c70cabf2d1dca0b2de694950b299b9b49a4
 eventlet.monkey_patch() 
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
@@ -13,9 +17,13 @@ from sqlalchemy import or_, cast
 from functools import wraps
 import click
 from getpass import getpass
+<<<<<<< HEAD
 from flask_socketio import SocketIO # type: ignore
 import fitz # type: ignore # PyMuPDF
 import re # Biblioteca para expressões regulares (procurar padrões de texto)
+=======
+from flask_socketio import SocketIO
+>>>>>>> 2f9e4c70cabf2d1dca0b2de694950b299b9b49a4
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 app = Flask(__name__)
@@ -74,7 +82,11 @@ def admin_required(f):
     def decorated_function(*args, **kwargs):
         if not current_user.is_admin:
             flash('Acesso negado. Apenas administradores podem aceder a esta página.', 'danger')
+<<<<<<< HEAD
             return redirect(url_for('inicio'))
+=======
+            return redirect(url_for('index'))
+>>>>>>> 2f9e4c70cabf2d1dca0b2de694950b299b9b49a4
         return f(*args, **kwargs)
     return decorated_function
 
@@ -100,14 +112,22 @@ def get_dashboard_data():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
+<<<<<<< HEAD
         return redirect(url_for('inicio'))
+=======
+        return redirect(url_for('index'))
+>>>>>>> 2f9e4c70cabf2d1dca0b2de694950b299b9b49a4
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
         user = User.query.filter_by(username=username).first()
         if user and bcrypt.check_password_hash(user.password_hash, password):
             login_user(user)
+<<<<<<< HEAD
             return redirect(url_for('inicio'))
+=======
+            return redirect(url_for('index'))
+>>>>>>> 2f9e4c70cabf2d1dca0b2de694950b299b9b49a4
         else:
             flash('Login sem sucesso. Verifique o utilizador e a senha.', 'danger')
     return render_template('login.html')
@@ -120,6 +140,7 @@ def logout():
     flash('Logout efetuado com sucesso.', 'success')
     return redirect(url_for('login'))
 
+<<<<<<< HEAD
 @app.route('/')
 @login_required
 def inicio():
@@ -129,6 +150,12 @@ def inicio():
 @app.route('/painel')
 @login_required
 def painel_controle():
+=======
+
+@app.route('/')
+@login_required
+def index():
+>>>>>>> 2f9e4c70cabf2d1dca0b2de694950b299b9b49a4
     search_query = request.args.get('q', '')
     selected_status = request.args.get('status', '')
     pedidos_base_query = Entrada.query.filter_by(tipo='Pedido', arquivado=False)
@@ -143,12 +170,18 @@ def painel_controle():
     pedidos = pedidos_base_query.order_by(Entrada.numero_pedido).all()
     orcamentos = orcamentos_base_query.order_by(Entrada.numero_pedido).all()
     dashboard_data = get_dashboard_data()
+<<<<<<< HEAD
     return render_template('painel_controle.html', dashboard=dashboard_data, pedidos=pedidos, orcamentos=orcamentos, search_query=search_query, selected_status=selected_status)
+=======
+    return render_template('index.html', dashboard=dashboard_data, pedidos=pedidos, orcamentos=orcamentos, search_query=search_query, selected_status=selected_status)
+
+>>>>>>> 2f9e4c70cabf2d1dca0b2de694950b299b9b49a4
 
 @app.route('/novo', methods=['GET', 'POST'])
 @login_required
 def nova_entrada():
     if request.method == 'POST':
+<<<<<<< HEAD
         tipo_entrada = request.form.get('tipo')
         numero_pedido_str = request.form.get('numero_pedido')
 
@@ -184,6 +217,17 @@ def nova_entrada():
 
         # ... (o resto da função para salvar anexos e emitir o sinal continua igual)
 
+=======
+        numero_pedido_str = request.form.get('numero_pedido')
+        if not numero_pedido_str.isdigit():
+            flash('O N° de entrada deve conter apenas números.', 'danger')
+            return render_template('nova_entrada.html', form_data=request.form)
+        numero_pedido = int(numero_pedido_str)
+        if Entrada.query.filter_by(numero_pedido=numero_pedido).first():
+            flash(f'O N° de entrada {numero_pedido} já existe. Tente outro.', 'danger')
+            return render_template('nova_entrada.html', form_data=request.form)
+        nova_entrada_obj = Entrada(tipo=request.form.get('tipo'), numero_pedido=numero_pedido, cliente=request.form.get('cliente'), status=request.form.get('status'), descricao=request.form.get('descricao'), observacoes=request.form.get('observacoes'))
+>>>>>>> 2f9e4c70cabf2d1dca0b2de694950b299b9b49a4
         db.session.add(nova_entrada_obj)
         uploaded_files = request.files.getlist('anexos')
         for ficheiro in uploaded_files:
@@ -195,10 +239,17 @@ def nova_entrada():
         db.session.commit()
         socketio.emit('update_data')
         flash(f"{nova_entrada_obj.tipo} criado com sucesso!", 'success')
+<<<<<<< HEAD
         return redirect(url_for('painel_controle'))
 
     return render_template('nova_entrada.html', form_data={})
 
+=======
+        return redirect(url_for('index'))
+    return render_template('nova_entrada.html', form_data={})
+
+
+>>>>>>> 2f9e4c70cabf2d1dca0b2de694950b299b9b49a4
 @app.route('/editar/<int:id>', methods=['GET', 'POST'])
 @login_required
 def editar_entrada(id):
@@ -220,10 +271,18 @@ def editar_entrada(id):
         db.session.commit()
         socketio.emit('update_data')
         flash(f'{entrada.tipo} atualizado com sucesso!', 'success')
+<<<<<<< HEAD
         return redirect(url_for('painel_controle'))
     return render_template('editar_entrada.html', entrada=entrada)
 
 @app.route('/excluir-anexo/<int:anexo_id>', methods=['GET', 'POST'])
+=======
+        return redirect(url_for('editar_entrada', id=id))
+    return render_template('editar_entrada.html', entrada=entrada)
+
+
+@app.route('/excluir-anexo/<int:anexo_id>', methods=['POST'])
+>>>>>>> 2f9e4c70cabf2d1dca0b2de694950b299b9b49a4
 @login_required
 def excluir_anexo(anexo_id):
     anexo = Anexo.query.get_or_404(anexo_id)
@@ -238,6 +297,10 @@ def excluir_anexo(anexo_id):
     flash('Anexo excluído com sucesso.', 'success')
     return redirect(url_for('editar_entrada', id=entrada_id))
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 2f9e4c70cabf2d1dca0b2de694950b299b9b49a4
 @app.route('/excluir/<int:id>', methods=['POST'])
 @login_required
 def excluir_entrada(id):
@@ -255,7 +318,12 @@ def excluir_entrada(id):
         flash(f'{tipo_entrada} arquivado foi excluído permanentemente!', 'danger')
         return redirect(url_for('pedidos_arquivados'))
     flash(f'{tipo_entrada} foi excluído com sucesso!', 'danger')
+<<<<<<< HEAD
     return redirect(url_for('inicio'))
+=======
+    return redirect(url_for('index'))
+
+>>>>>>> 2f9e4c70cabf2d1dca0b2de694950b299b9b49a4
 
 @app.route('/atualizar-status/<int:id>', methods=['POST'])
 @login_required
@@ -271,6 +339,10 @@ def atualizar_status(id):
         return jsonify({'success': True, 'message': 'Status atualizado com sucesso!', 'dashboard': novos_dados_dashboard})
     return jsonify({'success': False, 'message': 'Status inválido.'}), 400
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 2f9e4c70cabf2d1dca0b2de694950b299b9b49a4
 @app.route('/converter/<int:id>', methods=['POST'])
 @login_required
 def converter_para_pedido(id):
@@ -283,7 +355,12 @@ def converter_para_pedido(id):
         flash(f"Orçamento #{orcamento.numero_pedido} foi convertido em Pedido com sucesso!", 'success')
     else:
         flash('Esta entrada já é um Pedido.', 'warning')
+<<<<<<< HEAD
     return redirect(url_for('inicio'))
+=======
+    return redirect(url_for('index'))
+
+>>>>>>> 2f9e4c70cabf2d1dca0b2de694950b299b9b49a4
 
 @app.route('/arquivar/<int:id>', methods=['POST'])
 @login_required
@@ -293,7 +370,12 @@ def arquivar_entrada(id):
     db.session.commit()
     socketio.emit('update_data')
     flash(f'{entrada.tipo} #{entrada.numero_pedido} foi arquivado com sucesso.', 'success')
+<<<<<<< HEAD
     return redirect(url_for('inicio'))
+=======
+    return redirect(url_for('index'))
+
+>>>>>>> 2f9e4c70cabf2d1dca0b2de694950b299b9b49a4
 
 @app.route('/desarquivar/<int:id>', methods=['POST'])
 @login_required
@@ -305,6 +387,10 @@ def desarquivar_entrada(id):
     flash(f'{entrada.tipo} #{entrada.numero_pedido} foi restaurado com sucesso.', 'success')
     return redirect(url_for('pedidos_arquivados'))
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 2f9e4c70cabf2d1dca0b2de694950b299b9b49a4
 @app.route('/arquivados')
 @login_required
 def pedidos_arquivados():
@@ -371,6 +457,7 @@ def uploaded_file(filename):
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     return response
 
+<<<<<<< HEAD
 @app.route('/relatorio-romaneio', methods=['GET', 'POST'])
 @login_required
 def relatorio_romaneio():
@@ -475,6 +562,8 @@ def cadastro_clientes():
     """Exibe a página da nova ferramenta de Cadastro de Clientes."""
     # A lógica de cadastro será adicionada futuramente.
     return render_template('cadastro_clientes.html')
+=======
+>>>>>>> 2f9e4c70cabf2d1dca0b2de694950b299b9b49a4
 
 @app.cli.command("init-db")
 def init_db_command():
@@ -496,5 +585,9 @@ def create_admin_command():
     db.session.commit()
     print(f"Utilizador ADMINISTRADOR '{username}' criado com sucesso!")
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 2f9e4c70cabf2d1dca0b2de694950b299b9b49a4
 if __name__ == '__main__':
     app.run()
