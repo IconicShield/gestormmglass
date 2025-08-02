@@ -1,7 +1,7 @@
 # app.py
 import eventlet # type: ignore
 eventlet.monkey_patch() 
-from flask import Flask, render_template, request, redirect, url_for, send_from_directory, flash, jsonify
+from flask import Flask, Response, render_template, request, redirect, url_for, send_from_directory, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 from datetime import datetime
@@ -12,6 +12,8 @@ from flask_bcrypt import Bcrypt
 from sqlalchemy import or_, cast
 from functools import wraps
 import click
+import io
+import openpyxl
 from getpass import getpass
 from flask_socketio import SocketIO # type: ignore
 import fitz # type: ignore # PyMuPDF
@@ -475,6 +477,148 @@ def cadastro_clientes():
     """Exibe a página da nova ferramenta de Cadastro de Clientes."""
     # A lógica de cadastro será adicionada futuramente.
     return render_template('cadastro_clientes.html')
+
+# --- NOVAS ROTAS DE IMPORTAÇÃO E EXPORTAÇÃO DE ENTRADAS ---
+
+@app.route('/exportar-painel')
+@login_required
+def exportar_painel():
+    """Exporta os pedidos e orçamentos ativos para um ficheiro .xlsx."""
+    # Seleciona apenas as entradas ativas (não arquivadas)
+    entradas = Entrada.query.filter_by(arquivado=False).order_by(Entrada.tipo, Entrada.numero_pedido).all()
+
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = "Painel_Controle"
+
+    # Cabeçalhos
+    sheet.append(['N° Pedido', 'Tipo', 'Cliente', 'Status', 'Descrição', 'Observações', 'Data de Registro'])
+
+    # Dados
+    for entrada in entradas:
+        sheet.append([
+            entrada.numero_pedido,
+            entrada.tipo,
+            entrada.cliente, # Agora é um campo de texto simples
+            entrada.status,
+            entrada.descricao,
+            entrada.observacoes,
+            entrada.data_registro.strftime('%Y-%m-%d %H:%M:%S')
+        ])
+
+    output = io.BytesIO()
+    workbook.save(output)
+    output.seek(0)
+
+    return Response(output, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": "attachment;filename=painel_controle.xlsx"})
+
+@app.route('/exportar-arquivados')
+@login_required
+def exportar_arquivados():
+    """Exporta os pedidos e orçamentos arquivados para um ficheiro .xlsx."""
+    # Seleciona apenas as entradas arquivadas
+    entradas = Entrada.query.filter_by(arquivado=True).order_by(Entrada.tipo, Entrada.numero_pedido).all()
+
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = "Arquivados"
+
+    # Cabeçalhos
+    sheet.append(['N° Pedido', 'Tipo', 'Cliente', 'Status', 'Descrição', 'Observações', 'Data de Registro'])
+
+    # Dados
+    for entrada in entradas:
+        sheet.append([
+            entrada.numero_pedido,
+            entrada.tipo,
+            entrada.cliente, # Campo de texto simples
+            entrada.status,
+            entrada.descricao,
+            entrada.observacoes,
+            entrada.data_registro.strftime('%Y-%m-%d %H:%M:%S')
+        ])
+
+    output = io.BytesIO()
+    workbook.save(output)
+    output.seek(0)
+
+    return Response(output, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": "attachment;filename=arquivados.xlsx"})
+
+
+@app.route('/importar-entradas', methods=['POST'])
+@login_required
+def importar_entradas():
+    """Importa novas entradas a partir de um ficheiro .xlsx."""
+    if 'xlsx_file' not in request.files:
+        flash('Nenhum ficheiro selecionado.', 'warning')
+        return redirect(request.referrer)
+
+    ficheiro = request.files['xlsx_file']
+
+    if ficheiro.filename == '':
+        flash('Nenhum ficheiro selecionado.', 'warning')
+        return redirect(request.referrer)
+
+    if ficheiro and ficheiro.filename.lower().endswith('.xlsx'):
+        try:
+            workbook = openpyxl.load_workbook(ficheiro)
+            sheet = workbook.active
+
+            entradas_adicionadas = 0
+            entradas_ignoradas = 0
+            
+            for row in sheet.iter_rows(min_row=2, values_only=True):
+                if not row or all(cell is None for cell in row):
+                    continue
+
+                if len(row) < 6: # Garante que as colunas essenciais existam
+                    continue
+                
+                num_pedido_str, tipo, cliente, status, descricao, observacoes = row[:6]
+
+                if not num_pedido_str or not tipo or not cliente or not descricao:
+                    continue
+
+                try:
+                    num_pedido = int(num_pedido_str)
+                except (ValueError, TypeError):
+                    continue
+
+                if Entrada.query.filter_by(numero_pedido=num_pedido).first():
+                    entradas_ignoradas += 1
+                    continue
+
+                nova_entrada = Entrada(
+                    numero_pedido=num_pedido,
+                    tipo=str(tipo),
+                    cliente=str(cliente),
+                    status=str(status) if status in ['Não iniciado', 'Em andamento', 'Concluído'] else 'Não iniciado',
+                    descricao=str(descricao),
+                    observacoes=str(observacoes) if observacoes else None
+                )
+                db.session.add(nova_entrada)
+                entradas_adicionadas += 1
+
+            if entradas_adicionadas > 0:
+                db.session.commit()
+                socketio.emit('update_data')
+
+            mensagem = f'{entradas_adicionadas} entrada(s) importada(s) com sucesso!'
+            if entradas_ignoradas > 0:
+                mensagem += f' {entradas_ignoradas} foram ignoradas por já existirem.'
+
+            flash(mensagem, 'success' if entradas_adicionadas > 0 else 'info')
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ocorreu um erro ao processar o ficheiro: {e}', 'danger')
+
+        return redirect(request.referrer)
+
+    flash('Formato de ficheiro inválido. Por favor, envie um ficheiro .xlsx.', 'danger')
+    return redirect(request.referrer)
 
 @app.cli.command("init-db")
 def init_db_command():

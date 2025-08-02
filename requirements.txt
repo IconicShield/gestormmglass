@@ -11,3 +11,4 @@ Werkzeug>=2.3.0
 click>=8.1.0
 greenlet>=1.1.0
 PyMuPDF
+openpyxl
