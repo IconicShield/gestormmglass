@@ -3,7 +3,10 @@
 {% block content %}
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1>Arquivados</h1>
-        <a href="{{ url_for('painel_controle') }}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Voltar ao Painel Principal</a>
+        <div>
+            <a href="{{ url_for('exportar_arquivados') }}" class="btn btn-success"><i class="fas fa-file-excel"></i> Exportar .xlsx</a>
+            <a href="{{ url_for('painel_controle') }}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Voltar ao Painel Principal</a>
+        </div>
     </div>
 
     <div class="row">
@@ -13,6 +16,7 @@
                 <thead class="thead-light">
                     <tr>
                         <th>N°</th>
+                        <th>N° Cliente</th>
                         <th>Cliente</th>
                         <th>Status</th>
                         <th>Ações</th>
@@ -30,7 +34,22 @@
                                 {% endif %}
                             </button>
                         </td>
-                        <td>{{ entrada.cliente }}</td>
+                                                <td>
+                            {% if entrada.cliente %}
+                                <button type="button" class="btn btn-outline-secondary btn-sm" style="color: var(--text-color);" data-toggle="modal" data-target="#clienteDetalhesModal-{{ entrada.cliente.id }}">
+                                    {{ entrada.cliente.numero_cliente }}
+                                </button>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if entrada.cliente %}
+                                {{ entrada.cliente.nome }}
+                            {% else %}
+                                {{ entrada.cliente_nome_temp }}
+                            {% endif %}
+                        </td>
                         <td>
                             {% set status_color = 'secondary' %}
                             {% if entrada.status == 'Concluído' %}{% set status_color = 'success' %}
@@ -81,7 +100,22 @@
                                 {% endif %}
                             </button>
                         </td>
-                        <td>{{ entrada.cliente }}</td>
+                        <td>
+                            {% if entrada.cliente %}
+                                <button type="button" class="btn btn-outline-secondary btn-sm" style="color: var(--text-color);" data-toggle="modal" data-target="#clienteDetalhesModal-{{ entrada.cliente.id }}">
+                                    {{ entrada.cliente.numero_cliente }}
+                                </button>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if entrada.cliente %}
+                                {{ entrada.cliente.nome }}
+                            {% else %}
+                                {{ entrada.cliente_nome_temp }}
+                            {% endif %}
+                        </td>
                         <td>
                             {% set status_color = 'secondary' %}
                             {% if entrada.status == 'Concluído' %}{% set status_color = 'success' %}
@@ -112,6 +146,67 @@
 {% endblock %}
 
 {% block modals %}
+    {# --- MODAL DE DETALHES DO CLIENTE --- #}
+    {% set clientes_unicos = [] %}
+    {% for entrada in pedidos + orcamentos %}
+        {% if entrada.cliente and entrada.cliente not in clientes_unicos %}
+            {% do clientes_unicos.append(entrada.cliente) %}
+        {% endif %}
+    {% endfor %}
+
+    {% for cliente in clientes_unicos %}
+    <div class="modal fade" id="clienteDetalhesModal-{{ cliente.id }}" tabindex="-1" role="dialog" aria-labelledby="clienteModalLabel-{{ cliente.id }}" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="clienteModalLabel-{{ cliente.id }}">Detalhes de: {{ cliente.nome }}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Dados Pessoais</h6><hr class="mt-1 mb-2">
+                            <dl class="row mb-0">
+                                <dt class="col-sm-4">N° Cliente:</dt><dd class="col-sm-8">{{ cliente.numero_cliente }}</dd>
+                                <dt class="col-sm-4">Nome:</dt><dd class="col-sm-8 text-uppercase">{{ cliente.nome }}</dd>
+                                <dt class="col-sm-4">Telefone:</dt><dd class="col-sm-8">{{ cliente.telefone or '-' }}</dd>
+                                <dt class="col-sm-4">Tipo Pessoa:</dt><dd class="col-sm-8">{{ cliente.tipo_pessoa }}</dd>
+                                <dt class="col-sm-4">CPF/CNPJ:</dt><dd class="col-sm-8">{{ cliente.cpf_cnpj or '-' }}</dd>
+                                <dt class="col-sm-4">Como Conheceu:</dt><dd class="col-sm-8">{{ cliente.como_conheceu or '-' }}</dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Endereço</h6><hr class="mt-1 mb-2">
+                            <dl class="row mb-0">
+                                <dt class="col-sm-4">Rua:</dt><dd class="col-sm-8 text-uppercase">{{ cliente.rua or '-' }}</dd>
+                                <dt class="col-sm-4">Número:</dt><dd class="col-sm-8">{{ cliente.numero_endereco or '-' }}</dd>
+                                <dt class="col-sm-4">Complemento:</dt><dd class="col-sm-8 text-uppercase">{{ cliente.complemento or '-' }}</dd>
+                                <dt class="col-sm-4">Bairro:</dt><dd class="col-sm-8 text-uppercase">{{ cliente.bairro or '-' }}</dd>
+                                <dt class="col-sm-4">Cidade:</dt><dd class="col-sm-8 text-uppercase">{{ cliente.cidade or '-' }}</dd>
+                                <dt class="col-sm-4">UF:</dt><dd class="col-sm-8 text-uppercase">{{ cliente.uf or '-' }}</dd>
+                                <dt class="col-sm-4">CEP:</dt><dd class="col-sm-8">{{ cliente.cep or '-' }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6>Observações</h6><hr class="mt-1 mb-2">
+                            <p style="white-space: pre-wrap;">{{ cliente.observacoes or 'Nenhuma observação.' }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
+                    <a href="{{ url_for('editar_cliente', id=cliente.id) }}" class="btn btn-primary">Editar Cliente</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    {# --- MODAIS DE DETALHES DA ENTRADA --- #}
     {% for entrada in pedidos + orcamentos %}
     <div class="modal fade" id="detalhesModal-{{ entrada.id }}" tabindex="-1" role="dialog">
         <div class="modal-dialog modal-lg" role="document">
@@ -128,7 +223,7 @@
                                 <dt class="col-sm-5">N° da Entrada</dt><dd class="col-sm-7">{{ entrada.numero_pedido }}</dd>
                                 <dt class="col-sm-5">Tipo</dt><dd class="col-sm-7">{{ entrada.tipo }}</dd>
                                 <dt class="col-sm-5">Data de Registo</dt><dd class="col-sm-7">{{ entrada.data_registro.strftime('%d/%m/%Y às %H:%M') }}</dd>
-                                <dt class="col-sm-5">Cliente</dt><dd class="col-sm-7 text-uppercase">{{ entrada.cliente }}</dd>
+                                <dt class="col-sm-5">Cliente</dt><dd class="col-sm-7 text-uppercase">{% if entrada.cliente %}{{ entrada.cliente.nome }}{% else %}{{ entrada.cliente_nome_temp }}{% endif %}</dd>
                                 <dt class="col-sm-5">Status</dt><dd class="col-sm-7">{% set status_color = 'secondary' %}{% if entrada.status == 'Concluído' %}{% set status_color = 'success' %}{% elif entrada.status == 'Em andamento' %}{% set status_color = 'warning' %}{% elif entrada.status == 'Não iniciado' %}{% set status_color = 'danger' %}{% endif %}<span class="badge badge-{{ status_color }}">{{ entrada.status }}</span></dd>
                             </dl>
                         </div>

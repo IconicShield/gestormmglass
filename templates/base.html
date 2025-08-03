@@ -5,16 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css">
     <title>Gestão MMGlass</title>
     <link rel="icon" href="{{ url_for('static', filename='images/logo.png') }}" type="image/png">
 
     <style>
-
-        .sidebar-sticky {
-            position: -webkit-sticky; /* Para compatibilidade com navegadores mais antigos */
-            position: sticky;
-            top: 1.5rem; /* Define a distância do topo da página */
-        }
 
         /* Aumenta o tamanho da fonte dos números no dashboard lateral */
         .sidebar-sticky .badge-pill {
@@ -104,24 +99,34 @@
         }
         /* ### FIM DOS ESTILOS CORRIGIDOS ### */
 
-        /* ### NOVOS ESTILOS PARA O CONTEÚDO DO CARROSSEL ### */
-        .carousel-item-flex {
-            display: flex;
-            flex-direction: column;
+        #page-content-wrapper {
+            zoom: 0.8;
+            /* Garante que o container se comporte bem em altura e rolagem */
+            height: 120vh;
+            overflow-y: auto;
+        }
+
+        /* ### ESTILOS DO MODAL ATUALIZADOS ### */
+        .modal-fullscreen .modal-dialog {
+            max-width: 95vw;
+            height: 95vh;
+            margin: auto;
+        }
+        .modal-fullscreen .modal-content,
+        .modal-fullscreen .modal-body,
+        .modal-fullscreen .carousel,
+        .modal-fullscreen .carousel-inner,
+        .modal-fullscreen .carousel-item {
             height: 100%;
         }
-        .carousel-image-container {
-            flex-grow: 1; /* Faz esta div ocupar todo o espaço vertical disponível */
+        .modal-fullscreen .modal-content {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden; /* Garante que a imagem não transborde */
+            flex-direction: column;
         }
-        .carousel-rotation-controls {
-            flex-shrink: 0; /* Impede que a div dos botões encolha */
-            padding-top: 0.5rem;
+        .modal-fullscreen .modal-body {
+            flex-grow: 1;
+            overflow: hidden;
         }
-        /* ### FIM DOS NOVOS ESTILOS ### */
 
         /* ... (outros estilos como body, card, table, etc. continuam aqui) ... */
         body { background-color: var(--bg-color); color: var(--text-color); transition: background-color 0.2s ease, color 0.2s ease; }
@@ -159,14 +164,6 @@
                     <i class="fas fa-users fa-fw"></i>
                     <span class="menu-text">Cadastro de Clientes</span>
                 </a>
-                <a href="{{ url_for('relatorio_pedidos') }}" class="list-group-item">
-                    <i class="fas fa-file-invoice fa-fw"></i>
-                    <span class="menu-text">Relatório de Pedidos</span>
-                </a>
-                <a href="{{ url_for('relatorio_romaneio') }}" class="list-group-item">
-                    <i class="fas fa-file-pdf fa-fw"></i>
-                    <span class="menu-text">Relatório de Romaneio</span>
-                </a>
             </div>
         </div>
         <div id="page-content-wrapper">
@@ -201,6 +198,7 @@
             </div>
         </div>
         </div>
+
     {% block modals %}{% endblock %}
 
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
@@ -279,36 +277,52 @@
             });
         });
 
+        // Lógica de ativação e destruição do Zoom com jQuery
         if (window.jQuery) {
             $('div[id^="galeriaAnexos-"]').on('shown.bs.modal', function () {
                 const activeImage = $(this).find('.carousel-item.active .panzoom-image').get(0);
                 initializePanzoom(activeImage);
             });
             $('div[id^="carouselAnexos-"]').on('slid.bs.carousel', function () {
-                const previousImage = $(this).find('.carousel-item:not(.active) .panzoom-image').get(0);
-                if (previousImage && previousImage.panzoom) {
-                    previousImage.panzoom.destroy();
-                    previousImage.panzoom = null;
-                }
                 const activeImage = $(this).find('.carousel-item.active .panzoom-image').get(0);
                 initializePanzoom(activeImage);
             });
             $('div[id^="galeriaAnexos-"]').on('hidden.bs.modal', function () {
                 $(this).find('.panzoom-image').each(function() {
-                    this.dataset.rotation = 0;
                     if (this.panzoom) {
                         this.panzoom.destroy();
                         this.panzoom = null;
                     }
-                    this.style.transform = 'rotate(0deg) scale(1) translate(0px, 0px)';
                 });
             });
         }
     });
+
+    $(function() {
+        $("#cliente_nome").autocomplete({
+            source: "{{ url_for('buscar_clientes') }}", // A rota que criamos
+            minLength: 2, // Começa a buscar após 2 caracteres
+            select: function(event, ui) {
+                // Quando um item é selecionado, preenche os campos
+                event.preventDefault(); // Impede que o valor padrão seja inserido
+                $("#cliente_nome").val(ui.item.value); // Campo visível com o nome
+                $("#cliente_id").val(ui.item.id);     // Campo escondido com o ID
+            },
+            change: function(event, ui) {
+                // Se o usuário apagar ou alterar o texto após selecionar, limpa o ID
+                if (!ui.item) {
+                    $("#cliente_id").val("");
+                }
+            }
+        });
+    });
+
     </script>
 
-    {% block scripts %}{% endblock %}
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
 
+    {% block scripts %}{% endblock %}
 
 </body>
 </html>

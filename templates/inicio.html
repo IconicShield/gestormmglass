@@ -11,12 +11,18 @@
 
     <p>Selecione uma ferramenta para começar:</p>
     <div class="row justify-content-center">
-        <div class="col-md-4">
-            <a href="{{ url_for('painel_controle') }}" class="btn btn-primary btn-lg btn-block shadow-sm">
+        <div class="col-md-2 mb-3">
+            <a href="{{ url_for('painel_controle') }}" class="btn btn-primary btn-block shadow-sm">
                 <i class="fas fa-tachometer-alt fa-2x mb-2"></i><br>
                 Painel de Controle
             </a>
         </div>
+        <div class="col-md-2 mb-3">
+            <a href="{{ url_for('cadastro_clientes') }}" class="btn btn-info btn-block shadow-sm">
+                <i class="fas fa-users fa-2x mb-2"></i><br>
+                Cadastro de Clientes
+            </a>
         </div>
+    </div>
 </div>
 {% endblock %}

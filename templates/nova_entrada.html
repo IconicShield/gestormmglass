@@ -1,56 +1,86 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <h1>Nova Entrada</h1>
-    <hr>
-    <form method="post" enctype="multipart/form-data">
-        <div class="row">
-            <div class="col-md-6">
-                <div class="form-group">
-                    <label>Tipo de Entrada</label>
-                    <div class="btn-group btn-group-toggle d-block" data-toggle="buttons">
-                        <label class="btn btn-outline-secondary w-50">
-                            <input type="radio" name="tipo" value="Orçamento" required> <i class="fas fa-file-invoice-dollar mr-1"></i> Orçamento
-                        </label>
-                        <label class="btn btn-outline-secondary w-50">
-                            <input type="radio" name="tipo" value="Pedido"> <i class="fas fa-box-open mr-1"></i> Pedido
-                        </label>
-                    </div>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Nova Entrada</h1>
+    <a href="{{ url_for('painel_controle') }}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Voltar</a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form method="POST" enctype="multipart/form-data">
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    <label for="tipo">Tipo de Entrada (*)</label>
+                    <select id="tipo" name="tipo" class="form-control" required>
+                        <option value="Pedido" {% if form_data.tipo == 'Pedido' %}selected{% endif %}>Pedido</option>
+                        <option value="Orçamento" {% if form_data.tipo == 'Orçamento' %}selected{% endif %}>Orçamento</option>
+                    </select>
                 </div>
-                <div class="form-group">
-                    <label for="numero_pedido">N° da Entrada <span class="text-muted small">(Obrigatório para Pedidos)</span></label>
-                    <input type="text" name="numero_pedido" id="numero_pedido" class="form-control" value="{{ form_data.numero_pedido }}">
+                <div class="form-group col-md-4">
+                    <label for="numero_pedido">N° da Entrada (Opcional para Orçamento)</label>
+                    <input type="text" class="form-control" id="numero_pedido" name="numero_pedido" value="{{ form_data.numero_pedido }}">
                 </div>
-                <div class="form-group">
-                    <label for="cliente">Cliente</label>
-                    <input type="text" name="cliente" id="cliente" class="form-control" value="{{ form_data.cliente }}" required>
-                </div>
-                <div class="form-group">
-                    <label for="status">Status</label>
-                    <select name="status" id="status" class="form-control">
-                        <option value="Não iniciado">Não iniciado</option>
+                <div class="form-group col-md-4">
+                    <label for="status">Status (*)</label>
+                    <select id="status" name="status" class="form-control" required>
+                        <option value="Não iniciado" selected>Não iniciado</option>
                         <option value="Em andamento">Em andamento</option>
                         <option value="Concluído">Concluído</option>
                     </select>
                 </div>
             </div>
-            <div class="col-md-6">
-                <div class="form-group">
-                    <label for="descricao">Descrição</label>
-                    <textarea name="descricao" id="descricao" class="form-control" required rows="4">{{ form_data.descricao }}</textarea>
-                </div>
-                <div class="form-group">
-                    <label for="observacoes">Observações (opcional)</label>
-                    <textarea name="observacoes" id="observacoes" class="form-control" rows="4">{{ form_data.observacoes }}</textarea>
-                </div>
-                <div class="form-group">
-                    <label for="anexos">Anexos (pode selecionar vários)</label>
-                    <input type="file" name="anexos" id="anexos" class="form-control-file" multiple>
+
+            <div class="form-group">
+                <label for="cliente_nome">Cliente (*)</label>
+                <input type="text" class="form-control" id="cliente_nome" name="cliente_nome" placeholder="Digite para buscar um cliente ou cadastrar um novo" required>
+                <input type="hidden" id="cliente_id" name="cliente_id">
+            </div>
+            <div class="form-group">
+                <label for="obra">Obra</label>
+                <input type="text" name="obra" class="form-control">
+            </div>
+            <div class="form-group">
+                <label for="descricao">Descrição (*)</label>
+                <textarea class="form-control" id="descricao" name="descricao" rows="3" required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="observacoes">Observações</label>
+                <textarea class="form-control" id="observacoes" name="observacoes" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="anexos">Anexos</label>
+                <div class="custom-file">
+                    <input type="file" class="custom-file-input" id="anexos" name="anexos" multiple>
+                    <label class="custom-file-label" for="anexos">Escolher ficheiros...</label>
                 </div>
             </div>
-        </div>
-        <hr>
-        <button type="submit" class="btn btn-success"><i class="fas fa-check"></i> Salvar Entrada</button>
-        <a href="{{ url_for('painel_controle') }}" class="btn btn-secondary">Cancelar</a>
-    </form>
+            <button type="submit" class="btn btn-primary mt-3">Salvar Entrada</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// --- SCRIPT DO AUTOCOMPLETE DE CLIENTE ---
+$(function() {
+    $("#cliente_nome").autocomplete({
+        source: "{{ url_for('buscar_clientes') }}", // A rota que busca os clientes
+        minLength: 2, // Começa a buscar após 2 caracteres
+        select: function(event, ui) {
+            // Quando um item da lista é selecionado
+            event.preventDefault(); 
+            $("#cliente_nome").val(ui.item.value); // Preenche o campo de texto com o nome
+            $("#cliente_id").val(ui.item.id);     // PREENCHE O CAMPO ESCONDIDO COM O ID
+        },
+        change: function(event, ui) {
+            // Se o usuário apagar o texto após selecionar, o ID é limpo
+            if (!ui.item) {
+                $("#cliente_id").val("");
+            }
+        }
+    });
+});
+</script>
 {% endblock %}

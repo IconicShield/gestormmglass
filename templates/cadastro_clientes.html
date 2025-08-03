@@ -3,20 +3,157 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h1 class="h3 mb-0">Cadastro de Clientes</h1>
+    <div>
+        <button type="button" class="btn btn-info" data-toggle="modal" data-target="#importarClientesModal">
+            <i class="fas fa-file-upload"></i> Importar .xlsx
+        </button>
+        <a href="{{ url_for('exportar_clientes') }}" class="btn btn-success">
+            <i class="fas fa-file-excel"></i> Exportar .xlsx
+        </a>
+        <a href="{{ url_for('novo_cliente', tipo='rapido') }}" class="btn btn-primary"><i class="fas fa-plus fa-sm"></i> Novo Cadastro</a>
+    </div>
 </div>
 
 <div class="card shadow-sm">
     <div class="card-header">
-        <h6 class="mb-0">Gestão de Clientes</h6>
+        <h6 class="mb-0">Clientes Cadastrados</h6>
     </div>
     <div class="card-body">
-        <p>Esta área será utilizada para cadastrar, editar e visualizar os clientes da sua empresa.</p>
-        
-        <div class="alert alert-info" role="alert">
-            A funcionalidade completa de gestão de clientes será implementada na próxima etapa.
-        </div>
-
+        <table class="table table-hover table-sm table-uppercase">
+            <thead class="thead-light">
+                <tr>
+                    <th>N°</th>
+                    <th>Nome</th>
+                    <th>Telefone</th>
+                    <th>Pessoa</th>
+                    <th>CPF/CNPJ</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cliente in clientes %}
+                <tr>
+                    <td>{{ cliente.numero_cliente }}</td>
+                    <td>
+                        <button type="button" class="btn btn-link text-uppercase" data-toggle="modal" data-target="#detalhesCliente-{{ cliente.id }}" style="color: var(--text-color);">
+                            {{ cliente.nome }}
+                        </button>
+                    </td>
+                    <td>{{ cliente.telefone or '-' }}</td>
+                    <td>{{ cliente.tipo_pessoa }}</td>
+                    <td>{{ cliente.cpf_cnpj or '-' }}</td>
+                    <td>
+                        <a href="{{ url_for('editar_cliente', id=cliente.id) }}" class="btn btn-sm btn-info" title="Editar Cliente"><i class="fas fa-edit"></i></a>
+                        <form action="{{ url_for('excluir_cliente', id=cliente.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Tem a certeza que deseja excluir este cliente?');">
+                            <button type="submit" class="btn btn-sm btn-danger" title="Excluir Cliente"><i class="fas fa-trash-alt"></i></button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" class="text-center">Nenhum cliente cadastrado.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
+{% endblock %}
 
+{% block modals %}
+    {% for cliente in clientes %}
+    <div class="modal fade" id="detalhesCliente-{{ cliente.id }}" tabindex="-1" role="dialog" aria-labelledby="modalLabel-{{ cliente.id }}" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalLabel-{{ cliente.id }}">Detalhes de: {{ cliente.nome }}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Dados Pessoais</h6><hr class="mt-1 mb-2">
+                            <dl class="row mb-0">
+                                <dt class="col-sm-4">N° Cliente:</dt><dd class="col-sm-8">{{ cliente.numero_cliente }}</dd>
+                                <dt class="col-sm-4">Nome:</dt><dd class="col-sm-8">{{ cliente.nome }}</dd>
+                                <dt class="col-sm-4">Telefone:</dt><dd class="col-sm-8">{{ cliente.telefone or '-' }}</dd>
+                                <dt class="col-sm-4">Tipo Pessoa:</dt><dd class="col-sm-8">{{ cliente.tipo_pessoa }}</dd>
+                                <dt class="col-sm-4">CPF/CNPJ:</dt><dd class="col-sm-8">{{ cliente.cpf_cnpj or '-' }}</dd>
+                                <dt class="col-sm-4">Como Conheceu:</dt><dd class="col-sm-8">{{ cliente.como_conheceu or '-' }}</dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Endereço</h6><hr class="mt-1 mb-2">
+                            <dl class="row mb-0">
+                                <dt class="col-sm-4">Rua:</dt><dd class="col-sm-8">{{ cliente.rua or '-' }}</dd>
+                                <dt class="col-sm-4">Número:</dt><dd class="col-sm-8">{{ cliente.numero_endereco or '-' }}</dd>
+                                <dt class="col-sm-4">Complemento:</dt><dd class="col-sm-8">{{ cliente.complemento or '-' }}</dd>
+                                <dt class="col-sm-4">Bairro:</dt><dd class="col-sm-8">{{ cliente.bairro or '-' }}</dd>
+                                <dt class="col-sm-4">Cidade:</dt><dd class="col-sm-8">{{ cliente.cidade or '-' }}</dd>
+                                <dt class="col-sm-4">UF:</dt><dd class="col-sm-8">{{ cliente.uf or '-' }}</dd>
+                                <dt class="col-sm-4">CEP:</dt><dd class="col-sm-8">{{ cliente.cep or '-' }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6>Observações</h6><hr class="mt-1 mb-2">
+                            <p style="white-space: pre-wrap;">{{ cliente.observacoes or 'Nenhuma observação.' }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
+                    <a href="{{ url_for('editar_cliente', id=cliente.id) }}" class="btn btn-primary">Editar Cliente</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <div class="modal fade" id="importarClientesModal" tabindex="-1" role="dialog" aria-labelledby="importarModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="importarModalLabel">Importar Clientes de .xlsx</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form action="{{ url_for('importar_clientes') }}" method="POST" enctype="multipart/form-data">
+                    <div class="modal-body">
+                        <p>O seu ficheiro .xlsx deve ter as colunas na seguinte ordem, sem cabeçalho. O campo "Nome" é o único obrigatório.</p>
+                        <ul class="list-group list-group-flush mb-3">
+                            <li class="list-group-item"><b>A:</b> Nome (*)</li>
+                            <li class="list-group-item"><b>B:</b> Telefone</li>
+                            <li class="list-group-item"><b>C:</b> Tipo Pessoa (Física/Jurídica)</li>
+                            <li class="list-group-item"><b>D:</b> CPF/CNPJ</li>
+                            <li class="list-group-item"><b>E:</b> Como Conheceu</li>
+                            <li class="list-group-item"><b>F:</b> Rua</li>
+                            <li class="list-group-item"><b>G:</b> Número</li>
+                            <li class="list-group-item"><b>H:</b> Complemento</li>
+                            <li class="list-group-item"><b>I:</b> Bairro</li>
+                            <li class="list-group-item"><b>J:</b> Cidade</li>
+                            <li class="list-group-item"><b>K:</b> UF</li>
+                            <li class="list-group-item"><b>L:</b> CEP</li>
+                            <li class="list-group-item"><b>M:</b> Observações</li>
+                        </ul>
+                        <div class="form-group">
+                            <div class="custom-file">
+                                <input type="file" class="custom-file-input" id="xlsx_file" name="xlsx_file" accept=".xlsx" required>
+                                <label class="custom-file-label" for="xlsx_file">Escolher ficheiro...</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Importar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
 {% endblock %}

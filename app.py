@@ -1,11 +1,16 @@
 # app.py
-import eventlet # type: ignore
-eventlet.monkey_patch() 
-from flask import Flask, render_template, request, redirect, url_for, send_from_directory, flash, jsonify
+
+# A ORDEM AQUI É CRUCIAL PARA O EVENTLET
+import eventlet
+eventlet.monkey_patch()
+
+# AGORA, importe todo o resto
+import os
+from dotenv import load_dotenv
+from flask import Flask, Response, render_template, request, redirect, url_for, send_from_directory, flash, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 from datetime import datetime
-import os
 from sqlalchemy.exc import IntegrityError
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
@@ -13,30 +18,71 @@ from sqlalchemy import or_, cast
 from functools import wraps
 import click
 from getpass import getpass
-from flask_socketio import SocketIO # type: ignore
-import fitz # type: ignore # PyMuPDF
-import re # Biblioteca para expressões regulares (procurar padrões de texto)
+from flask_socketio import SocketIO
+import fitz
+import re
+import io
+import openpyxl
 
-basedir = os.path.abspath(os.path.dirname(__file__))
+# --- INÍCIO DA CORREÇÃO ESTRUTURAL ---
+
+# 1. Carregue as variáveis de ambiente primeiro
+load_dotenv()
+
+# 2. Crie as instâncias das extensões SEM o app
+db = SQLAlchemy()
+bcrypt = Bcrypt()
+login_manager = LoginManager()
+socketio = SocketIO()
+
+# 3. Crie a instância do app Flask
 app = Flask(__name__)
+app.jinja_env.add_extension('jinja2.ext.do')
+
+# app.py
+
+# --- BLOCO DE CONFIGURAÇÃO DO BANCO DE DADOS (VERSÃO CORRIGIDA) ---
+
+# Define o diretório base
+basedir = os.path.abspath(os.path.dirname(__file__))
+
+# Carrega a variável de ambiente DATABASE_URL do arquivo .env
+database_url = os.environ.get('DATABASE_URL')
+
+# Configura o app com base na variável
 app.config['SECRET_KEY'] = 'uma-chave-secreta-muito-dificil-de-adivinhar'
 
-# Configuração correta para o SocketIO
-socketio = SocketIO(app, async_mode='eventlet')
+# Verifica se a variável do Supabase existe para construir a URI
+if database_url:
+    # Substitui o prefixo para compatibilidade com SQLAlchemy
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+    
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    print("--- Conectando ao banco de dados Supabase ---")
+else:
+    # Caso contrário, usa o banco de dados local SQLite
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'database.db')
+    print("--- Usando banco de dados local SQLite ---")
 
-database_url = os.environ.get('DATABASE_URL')
-if database_url and database_url.startswith("postgres://"):
-    database_url = database_url.replace("postgres://", "postgresql://", 1)
-app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///' + os.path.join(basedir, 'database.db')
 app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'uploads')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-bcrypt = Bcrypt(app)
-login_manager = LoginManager(app)
+
+# --- FIM DO BLOCO CORRIGIDO ---
+
+# 5. INICIALIZE as extensões COM o app
+db.init_app(app)
+bcrypt.init_app(app)
+login_manager.init_app(app)
+socketio.init_app(app, async_mode='eventlet')
+
+# 6. Configure o LoginManager
 login_manager.login_view = 'login'
 login_manager.login_message = "Por favor, faça login para aceder a esta página."
 login_manager.login_message_category = "info"
+
+# --- FIM DA CORREÇÃO ESTRUTURAL ---
 
 
 class User(db.Model, UserMixin):
@@ -45,25 +91,56 @@ class User(db.Model, UserMixin):
     password_hash = db.Column(db.String(150), nullable=False)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
 
+class Cliente(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    numero_cliente = db.Column(db.Integer, unique=True, nullable=False)
+    nome = db.Column(db.String(150), nullable=False)
+    telefone = db.Column(db.String(20), nullable=True)
+    
+    # --- NOVOS CAMPOS ---
+    tipo_pessoa = db.Column(db.String(10), nullable=False) # Física ou Jurídica
+    cpf_cnpj = db.Column(db.String(20), nullable=True, unique=True)
+    como_conheceu = db.Column(db.String(100), nullable=True)
+    
+    # Endereço (cadastro completo)
+    rua = db.Column(db.String(200), nullable=True)
+    numero_endereco = db.Column(db.String(20), nullable=True)
+    complemento = db.Column(db.String(100), nullable=True)
+    bairro = db.Column(db.String(100), nullable=True)
+    cidade = db.Column(db.String(100), nullable=True)
+    uf = db.Column(db.String(2), nullable=True)
+    cep = db.Column(db.String(10), nullable=True)
+    
+    observacoes = db.Column(db.Text, nullable=True)
+
+    def __repr__(self):
+        return self.nome
 
 class Anexo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(200), nullable=False)
     entrada_id = db.Column(db.Integer, db.ForeignKey('entrada.id'), nullable=False)
 
-
 class Entrada(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     tipo = db.Column(db.String(50), nullable=False)
     numero_pedido = db.Column(db.Integer, unique=True, nullable=False)
     data_registro = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    cliente = db.Column(db.String(100), nullable=False)
+    
+    # --- INÍCIO DA ALTERAÇÃO CRÍTICA ---
+    # Ligação formal com a tabela de Clientes
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
+    cliente = db.relationship('Cliente', backref='entradas')
+    
+    # Campo para guardar o nome se o cliente não for cadastrado
+    cliente_nome_temp = db.Column(db.String(150), nullable=True)
+    # --- FIM DA ALTERAÇÃO CRÍTICA ---
+    obra = db.Column(db.String(200), nullable=True)
     status = db.Column(db.String(50), nullable=False, default='Não iniciado')
     descricao = db.Column(db.Text, nullable=False)
     observacoes = db.Column(db.Text, nullable=True)
     arquivado = db.Column(db.Boolean, default=False, nullable=False)
     anexos = db.relationship('Anexo', backref='entrada', lazy=True, cascade="all, delete-orphan")
-
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -96,6 +173,12 @@ def get_dashboard_data():
     }
     return {'pedidos': pedidos_dashboard, 'orcamentos': orcamentos_dashboard}
 
+@app.template_filter('format_phone')
+def format_phone_filter(s):
+    """Formata um número de telefone para (xx) x xxxx-xxxx."""
+    if not s or not s.isdigit() or len(s) != 11:
+        return s # Retorna o original se não for um número de 11 dígitos
+    return f"({s[0:2]}) {s[2]} {s[3:7]}-{s[7:11]}"
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -131,18 +214,38 @@ def inicio():
 def painel_controle():
     search_query = request.args.get('q', '')
     selected_status = request.args.get('status', '')
-    pedidos_base_query = Entrada.query.filter_by(tipo='Pedido', arquivado=False)
-    orcamentos_base_query = Entrada.query.filter_by(tipo='Orçamento', arquivado=False)
+
+    # Usamos outerjoin para incluir entradas mesmo que não tenham cliente_id
+    pedidos_base_query = Entrada.query.outerjoin(Cliente).filter(
+        Entrada.tipo == 'Pedido', 
+        Entrada.arquivado == False
+    )
+    orcamentos_base_query = Entrada.query.outerjoin(Cliente).filter(
+        Entrada.tipo == 'Orçamento', 
+        Entrada.arquivado == False
+    )
+
     if search_query:
         search_term = f"%{search_query}%"
-        pedidos_base_query = pedidos_base_query.filter(or_(cast(Entrada.numero_pedido, db.String).ilike(search_term), Entrada.cliente.ilike(search_term), Entrada.descricao.ilike(search_term)))
-        orcamentos_base_query = orcamentos_base_query.filter(or_(cast(Entrada.numero_pedido, db.String).ilike(search_term), Entrada.cliente.ilike(search_term), Entrada.descricao.ilike(search_term)))
+        # O filtro de busca agora procura em 4 lugares diferentes
+        search_filter = or_(
+            cast(Entrada.numero_pedido, db.String).ilike(search_term),
+            Entrada.descricao.ilike(search_term),
+            Cliente.nome.ilike(search_term),
+            Entrada.cliente_nome_temp.ilike(search_term)
+        )
+        pedidos_base_query = pedidos_base_query.filter(search_filter)
+        orcamentos_base_query = orcamentos_base_query.filter(search_filter)
+    
     if selected_status:
-        pedidos_base_query = pedidos_base_query.filter_by(status=selected_status)
-        orcamentos_base_query = orcamentos_base_query.filter_by(status=selected_status)
+        pedidos_base_query = pedidos_base_query.filter(Entrada.status == selected_status)
+        orcamentos_base_query = orcamentos_base_query.filter(Entrada.status == selected_status)
+        
     pedidos = pedidos_base_query.order_by(Entrada.numero_pedido).all()
     orcamentos = orcamentos_base_query.order_by(Entrada.numero_pedido).all()
+    
     dashboard_data = get_dashboard_data()
+    
     return render_template('painel_controle.html', dashboard=dashboard_data, pedidos=pedidos, orcamentos=orcamentos, search_query=search_query, selected_status=selected_status)
 
 @app.route('/novo', methods=['GET', 'POST'])
@@ -152,37 +255,39 @@ def nova_entrada():
         tipo_entrada = request.form.get('tipo')
         numero_pedido_str = request.form.get('numero_pedido')
 
-        # Se for um Pedido, o número continua a ser obrigatório
         if tipo_entrada == 'Pedido' and not numero_pedido_str:
             flash('O N° da Entrada é obrigatório para Pedidos.', 'danger')
             return render_template('nova_entrada.html', form_data=request.form)
 
-        # Se for um Orçamento e o campo estiver vazio, geramos um número
         if tipo_entrada == 'Orçamento' and not numero_pedido_str:
-            # Usamos o timestamp para garantir um número único
             numero_pedido = int(datetime.now().timestamp())
         else:
-            # Se o número foi preenchido, validamos como antes
             if not numero_pedido_str.isdigit():
                 flash('O N° de entrada deve conter apenas números.', 'danger')
                 return render_template('nova_entrada.html', form_data=request.form)
             numero_pedido = int(numero_pedido_str)
 
-        # Verifica se o número (seja o digitado ou o gerado) já existe
         if Entrada.query.filter_by(numero_pedido=numero_pedido).first():
             flash(f'O N° de entrada {numero_pedido} já existe. Tente outro.', 'danger')
             return render_template('nova_entrada.html', form_data=request.form)
 
+        # --- LÓGICA DO NOVO CLIENTE ---
+        cliente_id = request.form.get('cliente_id')
+        cliente_nome = request.form.get('cliente_nome')
+
         nova_entrada_obj = Entrada(
             tipo=tipo_entrada,
             numero_pedido=numero_pedido,
-            cliente=request.form.get('cliente'),
             status=request.form.get('status'),
             descricao=request.form.get('descricao'),
             observacoes=request.form.get('observacoes')
         )
 
-        # ... (o resto da função para salvar anexos e emitir o sinal continua igual)
+        if cliente_id: # Se um cliente existente foi selecionado
+            nova_entrada_obj.cliente_id = int(cliente_id)
+        else: # Se um novo nome foi digitado
+            nova_entrada_obj.cliente_nome_temp = cliente_nome
+        # --- FIM DA LÓGICA ---
 
         db.session.add(nova_entrada_obj)
         uploaded_files = request.files.getlist('anexos')
@@ -204,12 +309,29 @@ def nova_entrada():
 def editar_entrada(id):
     entrada = Entrada.query.get_or_404(id)
     if request.method == 'POST':
+        # Atualiza os campos simples
         entrada.tipo = request.form.get('tipo')
         entrada.numero_pedido = int(request.form.get('numero_pedido'))
-        entrada.cliente = request.form.get('cliente')
         entrada.status = request.form.get('status')
+        entrada.obra = request.form.get('obra')
         entrada.descricao = request.form.get('descricao')
         entrada.observacoes = request.form.get('observacoes')
+
+        # --- NOVA LÓGICA PARA ATUALIZAR O CLIENTE ---
+        cliente_id = request.form.get('cliente_id')
+        cliente_nome = request.form.get('cliente_nome')
+
+        if cliente_id:
+            # Se um cliente existente foi selecionado, vincula o ID
+            entrada.cliente_id = int(cliente_id)
+            entrada.cliente_nome_temp = None # Limpa o nome temporário
+        else:
+            # Se um novo nome foi digitado, guarda como temporário
+            entrada.cliente_id = None
+            entrada.cliente_nome_temp = cliente_nome
+        # --- FIM DA NOVA LÓGICA ---
+
+        # Lógica para adicionar novos anexos (se houver)
         uploaded_files = request.files.getlist('anexos')
         for ficheiro in uploaded_files:
             if ficheiro and ficheiro.filename != '':
@@ -217,10 +339,12 @@ def editar_entrada(id):
                 ficheiro.save(os.path.join(app.config['UPLOAD_FOLDER'], anexo_filename))
                 novo_anexo = Anexo(filename=anexo_filename, entrada=entrada)
                 db.session.add(novo_anexo)
+                
         db.session.commit()
         socketio.emit('update_data')
         flash(f'{entrada.tipo} atualizado com sucesso!', 'success')
         return redirect(url_for('painel_controle'))
+        
     return render_template('editar_entrada.html', entrada=entrada)
 
 @app.route('/excluir-anexo/<int:anexo_id>', methods=['GET', 'POST'])
@@ -368,6 +492,8 @@ def excluir_usuario(user_id):
 @login_required
 def uploaded_file(filename):
     response = send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+    # Adiciona o cabeçalho que sugere a visualização "inline"
+    response.headers['Content-Disposition'] = f'inline; filename="{filename}"'
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     return response
 
@@ -472,29 +598,470 @@ def relatorio_pedidos():
 @app.route('/cadastro-clientes')
 @login_required
 def cadastro_clientes():
-    """Exibe a página da nova ferramenta de Cadastro de Clientes."""
-    # A lógica de cadastro será adicionada futuramente.
-    return render_template('cadastro_clientes.html')
+    """Exibe a página de gestão de clientes com a lista de todos os clientes."""
+    clientes = Cliente.query.order_by(Cliente.numero_cliente).all()
+    return render_template('cadastro_clientes.html', clientes=clientes)
 
-@app.cli.command("init-db")
-def init_db_command():
-    db.create_all()
-    print("Base de dados inicializada e tabelas criadas.")
+@app.route('/novo-cliente/<tipo>', methods=['GET', 'POST'])
+@login_required
+def novo_cliente(tipo):
+    """Renderiza o formulário e, ao salvar, valida nomes e CPFs duplicados."""
+    if tipo not in ['rapido', 'completo']:
+        return "Tipo de cadastro inválido", 404
+
+    if request.method == 'POST':
+        nome_form = request.form.get('nome')
+        cpf_cnpj_form = request.form.get('cpf_cnpj') if request.form.get('cpf_cnpj') else None
+
+        # --- NOVA VALIDAÇÃO DE NOME (CASE-INSENSITIVE) ---
+        cliente_existente_nome = Cliente.query.filter(Cliente.nome.ilike(nome_form)).first()
+        if cliente_existente_nome:
+            flash(f'O cliente "{nome_form}" já está cadastrado.', 'danger')
+            return render_template('novo_cliente.html', tipo=tipo, form_data=request.form)
+        # --- FIM DA VALIDAÇÃO DE NOME ---
+        
+        if cpf_cnpj_form:
+            cliente_existente_cpf = Cliente.query.filter_by(cpf_cnpj=cpf_cnpj_form).first()
+            if cliente_existente_cpf:
+                flash('Este CPF/CNPJ já está cadastrado.', 'danger')
+                return render_template('novo_cliente.html', tipo=tipo, form_data=request.form)
+
+        ultimo_cliente = Cliente.query.order_by(Cliente.numero_cliente.desc()).first()
+        novo_numero = (ultimo_cliente.numero_cliente + 1) if ultimo_cliente else 1
+        
+        novo_cliente_obj = Cliente(
+            numero_cliente=novo_numero,
+            nome=nome_form,
+            telefone=request.form.get('telefone') if request.form.get('telefone') else None,
+            tipo_pessoa=request.form.get('tipo_pessoa'),
+            cpf_cnpj=cpf_cnpj_form,
+            como_conheceu=request.form.get('como_conheceu') if request.form.get('como_conheceu') else None,
+            rua=request.form.get('rua') if request.form.get('rua') else None,
+            numero_endereco=request.form.get('numero_endereco') if request.form.get('numero_endereco') else None,
+            complemento=request.form.get('complemento') if request.form.get('complemento') else None,
+            bairro=request.form.get('bairro') if request.form.get('bairro') else None,
+            cidade=request.form.get('cidade') if request.form.get('cidade') else None,
+            uf=request.form.get('uf') if request.form.get('uf') else None,
+            cep=request.form.get('cep') if request.form.get('cep') else None,
+            observacoes=request.form.get('observacoes') if request.form.get('observacoes') else None
+        )
+        db.session.add(novo_cliente_obj)
+        db.session.commit()
+        
+        # Lógica para atualizar entradas com nome temporário
+        entradas_para_atualizar = Entrada.query.filter_by(cliente_nome_temp=novo_cliente_obj.nome).all()
+        if entradas_para_atualizar:
+            for entrada in entradas_para_atualizar:
+                entrada.cliente_id = novo_cliente_obj.id
+                entrada.cliente_nome_temp = None
+            db.session.commit()
+            flash(f'Cliente "{novo_cliente_obj.nome}" cadastrado e {len(entradas_para_atualizar)} entrada(s) atualizada(s) com sucesso!', 'success')
+        else:
+            flash(f'Cliente "{novo_cliente_obj.nome}" cadastrado com sucesso!', 'success')
+        
+        return redirect(url_for('cadastro_clientes'))
+
+    nome_preenchido = request.args.get('nome', '')
+    form_data = {'nome': nome_preenchido}
+
+    return render_template('novo_cliente.html', tipo=tipo, form_data=form_data)
+
+@app.route('/editar-cliente/<int:id>', methods=['GET', 'POST'])
+@login_required
+def editar_cliente(id):
+    """Renderiza o formulário para editar, com validação de nome e CPF/CNPJ duplicados."""
+    cliente = Cliente.query.get_or_404(id)
+    if request.method == 'POST':
+        nome_form = request.form.get('nome')
+        cpf_cnpj_form = request.form.get('cpf_cnpj') if request.form.get('cpf_cnpj') else None
+
+        # --- NOVA VALIDAÇÃO DE NOME (CASE-INSENSITIVE) ---
+        # Verifica se já existe OUTRO cliente com o mesmo nome
+        cliente_existente_nome = Cliente.query.filter(Cliente.id != id, Cliente.nome.ilike(nome_form)).first()
+        if cliente_existente_nome:
+            flash(f'Já existe outro cliente cadastrado com o nome "{nome_form}".', 'danger')
+            return render_template('editar_cliente.html', cliente=cliente)
+        # --- FIM DA VALIDAÇÃO DE NOME ---
+
+        if cpf_cnpj_form and cpf_cnpj_form != cliente.cpf_cnpj:
+            cliente_existente_cpf = Cliente.query.filter_by(cpf_cnpj=cpf_cnpj_form).first()
+            if cliente_existente_cpf:
+                flash('Este CPF/CNPJ já pertence a outro cliente.', 'danger')
+                return render_template('editar_cliente.html', cliente=cliente)
+
+        # Atualiza o objeto cliente
+        cliente.nome = nome_form
+        cliente.telefone = request.form.get('telefone') if request.form.get('telefone') else None
+        cliente.tipo_pessoa = request.form.get('tipo_pessoa')
+        cliente.cpf_cnpj = cpf_cnpj_form
+        cliente.como_conheceu = request.form.get('como_conheceu') if request.form.get('como_conheceu') else None
+        cliente.rua = request.form.get('rua') if request.form.get('rua') else None
+        cliente.numero_endereco = request.form.get('numero_endereco') if request.form.get('numero_endereco') else None
+        cliente.complemento = request.form.get('complemento') if request.form.get('complemento') else None
+        cliente.bairro = request.form.get('bairro') if request.form.get('bairro') else None
+        cliente.cidade = request.form.get('cidade') if request.form.get('cidade') else None
+        cliente.uf = request.form.get('uf') if request.form.get('uf') else None
+        cliente.cep = request.form.get('cep') if request.form.get('cep') else None
+        cliente.observacoes = request.form.get('observacoes') if request.form.get('observacoes') else None
+        
+        db.session.commit()
+        flash(f'Dados do cliente "{cliente.nome}" atualizados com sucesso!', 'success')
+        return redirect(url_for('cadastro_clientes'))
+
+    return render_template('editar_cliente.html', cliente=cliente)
+
+@app.route('/excluir-cliente/<int:id>', methods=['POST'])
+@login_required
+def excluir_cliente(id):
+    """Exclui um cliente do banco de dados."""
+    cliente = Cliente.query.get_or_404(id)
+    try:
+        db.session.delete(cliente)
+        db.session.commit()
+        flash(f'Cliente "{cliente.nome}" excluído com sucesso.', 'success')
+    except IntegrityError:
+        db.session.rollback()
+        flash(f'Não foi possível excluir o cliente "{cliente.nome}" pois ele está associado a um ou mais pedidos/orçamentos.', 'danger')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ocorreu um erro ao excluir o cliente: {e}', 'danger')
+        
+    return redirect(url_for('cadastro_clientes'))
+
+@app.route('/exportar-clientes')
+@login_required
+def exportar_clientes():
+    """Exporta todos os clientes cadastrados para um ficheiro .xlsx."""
+    try:
+        import openpyxl
+        from flask import Response
+        import io
+
+        clientes = Cliente.query.order_by(Cliente.numero_cliente).all()
+
+        workbook = openpyxl.Workbook()
+        sheet = workbook.active
+        sheet.title = "Clientes"
+
+        # Define os cabeçalhos das colunas
+        headers = [
+            'N° Cliente', 'Nome', 'Telefone', 'Tipo Pessoa', 'CPF/CNPJ', 
+            'Como Conheceu', 'Rua', 'Número', 'Complemento', 'Bairro', 
+            'Cidade', 'UF', 'CEP', 'Observações'
+        ]
+        sheet.append(headers)
+
+        # Adiciona os dados de cada cliente
+        for cliente in clientes:
+            sheet.append([
+                cliente.numero_cliente,
+                cliente.nome,
+                cliente.telefone,
+                cliente.tipo_pessoa,
+                cliente.cpf_cnpj,
+                cliente.como_conheceu,
+                cliente.rua,
+                cliente.numero_endereco,
+                cliente.complemento,
+                cliente.bairro,
+                cliente.cidade,
+                cliente.uf,
+                cliente.cep,
+                cliente.observacoes
+            ])
+
+        # Cria um arquivo em memória para não salvar no disco do servidor
+        output = io.BytesIO()
+        workbook.save(output)
+        output.seek(0)
+
+        # Retorna o arquivo para download no navegador
+        return Response(output, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        headers={"Content-Disposition": "attachment;filename=cadastro_clientes.xlsx"})
+    except Exception as e:
+        flash(f"Ocorreu um erro ao exportar os dados: {e}", "danger")
+        return redirect(url_for('cadastro_clientes'))
 
 
-@app.cli.command("create-admin")
-def create_admin_command():
-    username = input("Digite o nome de utilizador do ADMIN: ")
-    password = getpass("Digite a senha do ADMIN: ")
-    existing_user = User.query.filter_by(username=username).first()
-    if existing_user:
-        print(f"Erro: O utilizador '{username}' já existe.")
-        return
-    hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
-    new_user = User(username=username, password_hash=hashed_password, is_admin=True)
-    db.session.add(new_user)
-    db.session.commit()
-    print(f"Utilizador ADMINISTRADOR '{username}' criado com sucesso!")
+@app.route('/importar-clientes', methods=['POST'])
+@login_required
+def importar_clientes():
+    """Importa novos clientes a partir de um ficheiro .xlsx."""
+    if 'xlsx_file' not in request.files:
+        flash('Nenhum ficheiro selecionado.', 'warning')
+        return redirect(url_for('cadastro_clientes'))
+
+    ficheiro = request.files['xlsx_file']
+
+    if ficheiro.filename == '':
+        flash('Nenhum ficheiro selecionado.', 'warning')
+        return redirect(url_for('cadastro_clientes'))
+
+    if ficheiro and ficheiro.filename.lower().endswith('.xlsx'):
+        try:
+            import openpyxl
+            workbook = openpyxl.load_workbook(ficheiro)
+            sheet = workbook.active
+
+            clientes_adicionados = 0
+            clientes_ignorados = 0
+            
+            ultimo_cliente = Cliente.query.order_by(Cliente.numero_cliente.desc()).first()
+            proximo_numero = (ultimo_cliente.numero_cliente + 1) if ultimo_cliente else 1
+
+            for row in sheet.iter_rows(min_row=2, values_only=True):
+                if not row or all(cell is None for cell in row) or not row[0]:
+                    continue # Pula linhas vazias ou sem nome
+
+                # Mapeia as colunas para os campos do modelo
+                nome, telefone, tipo_pessoa, cpf_cnpj, como_conheceu, rua, numero_endereco, complemento, bairro, cidade, uf, cep, observacoes = (row + (None,) * 13)[:13]
+
+                # Validação: Ignora se já existir um cliente com o mesmo CPF/CNPJ (se houver um)
+                if cpf_cnpj:
+                    cliente_existente = Cliente.query.filter_by(cpf_cnpj=cpf_cnpj).first()
+                    if cliente_existente:
+                        clientes_ignorados += 1
+                        continue
+                
+                novo_cliente = Cliente(
+                    numero_cliente=proximo_numero,
+                    nome=nome,
+                    telefone=telefone,
+                    tipo_pessoa=tipo_pessoa if tipo_pessoa in ['Física', 'Jurídica'] else 'Física',
+                    cpf_cnpj=cpf_cnpj,
+                    como_conheceu=como_conheceu,
+                    rua=rua,
+                    numero_endereco=numero_endereco,
+                    complemento=complemento,
+                    bairro=bairro,
+                    cidade=cidade,
+                    uf=uf,
+                    cep=cep,
+                    observacoes=observacoes
+                )
+                db.session.add(novo_cliente)
+                clientes_adicionados += 1
+                proximo_numero += 1
+
+            if clientes_adicionados > 0:
+                db.session.commit()
+
+            mensagem = f'{clientes_adicionados} cliente(s) importado(s) com sucesso!'
+            if clientes_ignorados > 0:
+                mensagem += f' {clientes_ignorados} foram ignorados por já possuírem CPF/CNPJ cadastrado.'
+
+            flash(mensagem, 'success' if clientes_adicionados > 0 else 'info')
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ocorreu um erro ao processar o ficheiro: {e}', 'danger')
+
+        return redirect(url_for('cadastro_clientes'))
+
+    flash('Formato de ficheiro inválido. Por favor, envie um ficheiro .xlsx.', 'danger')
+    return redirect(url_for('cadastro_clientes'))
+
+@app.route('/exportar-painel')
+@login_required
+def exportar_painel():
+    import openpyxl
+    from flask import Response
+    import io
+
+    # Seleciona apenas as entradas ativas (não arquivadas)
+    entradas = Entrada.query.filter_by(arquivado=False).order_by(Entrada.numero_pedido).all()
+
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = "Painel_Controle"
+
+    # Cabeçalhos
+    sheet.append([
+        'N° Pedido', 'Tipo', 'Cliente', 'Obra', 'Status', 
+        'Descrição', 'Observações', 'Data de Registro'
+    ])
+
+    # Dados
+    for entrada in entradas:
+        # Define o nome do cliente (seja o cadastrado ou o temporário)
+        nome_cliente = entrada.cliente.nome if entrada.cliente else entrada.cliente_nome_temp
+        
+        sheet.append([
+            entrada.numero_pedido,
+            entrada.tipo,
+            nome_cliente,
+            entrada.obra,
+            entrada.status,
+            entrada.descricao,
+            entrada.observacoes,
+            entrada.data_registro.strftime('%Y-%m-%d %H:%M:%S')
+        ])
+
+    output = io.BytesIO()
+    workbook.save(output)
+    output.seek(0)
+
+    return Response(output, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": "attachment;filename=painel_controle.xlsx"})
+
+@app.route('/exportar-arquivados')
+@login_required
+def exportar_arquivados():
+    import openpyxl
+    from flask import Response
+    import io
+
+    # Seleciona apenas as entradas arquivadas
+    entradas = Entrada.query.filter_by(arquivado=True).order_by(Entrada.numero_pedido).all()
+
+    workbook = openpyxl.Workbook()
+    sheet = workbook.active
+    sheet.title = "Arquivados"
+
+    # Cabeçalhos
+    sheet.append([
+        'N° Pedido', 'Tipo', 'Cliente', 'Obra', 'Status', 
+        'Descrição', 'Observações', 'Data de Registro'
+    ])
+
+    # Dados
+    for entrada in entradas:
+        nome_cliente = entrada.cliente.nome if entrada.cliente else entrada.cliente_nome_temp
+        
+        sheet.append([
+            entrada.numero_pedido,
+            entrada.tipo,
+            nome_cliente,
+            entrada.obra,
+            entrada.status,
+            entrada.descricao,
+            entrada.observacoes,
+            entrada.data_registro.strftime('%Y-%m-%d %H:%M:%S')
+        ])
+
+    output = io.BytesIO()
+    workbook.save(output)
+    output.seek(0)
+
+    return Response(output, mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": "attachment;filename=arquivados.xlsx"})
+
+@app.route('/importar-entradas', methods=['POST'])
+@login_required
+def importar_entradas():
+    if 'xlsx_file' not in request.files:
+        flash('Nenhum ficheiro selecionado.', 'warning')
+        return redirect(request.referrer)
+
+    ficheiro = request.files['xlsx_file']
+
+    if ficheiro.filename == '':
+        flash('Nenhum ficheiro selecionado.', 'warning')
+        return redirect(request.referrer)
+
+    if ficheiro and ficheiro.filename.lower().endswith('.xlsx'):
+        try:
+            workbook = openpyxl.load_workbook(ficheiro)
+            sheet = workbook.active
+
+            entradas_adicionadas = 0
+            entradas_ignoradas = 0
+            
+            for row in sheet.iter_rows(min_row=2, values_only=True):
+                # --- INÍCIO DA CORREÇÃO ---
+                # Pula a iteração se a linha for nula ou inteiramente vazia
+                if not row or all(cell is None for cell in row):
+                    continue
+                # --- FIM DA CORREÇÃO ---
+                
+                # Garante que a linha tenha colunas suficientes antes de tentar acessá-las
+                if len(row) < 7:
+                    continue
+                
+                num_pedido_str, tipo_entrada, nome_cliente, obra, status, descricao, observacoes = row[:7]
+
+                if not num_pedido_str or not tipo_entrada or not nome_cliente or not descricao:
+                    continue
+
+                try:
+                    num_pedido = int(num_pedido_str)
+                except (ValueError, TypeError):
+                    continue
+
+                if Entrada.query.filter_by(numero_pedido=num_pedido).first():
+                    entradas_ignoradas += 1
+                    continue
+
+                cliente_obj = Cliente.query.filter(Cliente.nome.ilike(str(nome_cliente))).first()
+
+                nova_entrada = Entrada(
+                    numero_pedido=num_pedido,
+                    tipo=tipo_entrada,
+                    cliente_id=cliente_obj.id if cliente_obj else None,
+                    cliente_nome_temp=str(nome_cliente) if not cliente_obj else None,
+                    obra=str(obra) if obra else None,
+                    status=str(status) if status in ['Não iniciado', 'Em andamento', 'Concluído'] else 'Não iniciado',
+                    descricao=str(descricao),
+                    observacoes=str(observacoes) if observacoes else None
+                )
+                db.session.add(nova_entrada)
+                entradas_adicionadas += 1
+
+            if entradas_adicionadas > 0:
+                db.session.commit()
+                socketio.emit('update_data')
+
+            mensagem = ""
+            if entradas_adicionadas > 0:
+                mensagem += f'{entradas_adicionadas} entrada(s) importada(s) com sucesso! '
+            if entradas_ignoradas > 0:
+                mensagem += f'{entradas_ignoradas} entrada(s) foram ignoradas por já existirem.'
+
+            if mensagem:
+                flash(mensagem, 'success' if entradas_adicionadas > 0 else 'info')
+            else:
+                flash('Nenhum dado novo para importar foi encontrado no ficheiro.', 'info')
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Ocorreu um erro ao processar o ficheiro: {e}', 'danger')
+
+        return redirect(request.referrer)
+
+    flash('Formato de ficheiro inválido. Por favor, envie um ficheiro .xlsx.', 'danger')
+    return redirect(request.referrer)
+
+@app.route('/buscar-clientes')
+@login_required
+def buscar_clientes():
+    """Busca clientes por nome para o autocomplete."""
+    search = request.args.get('term', '')
+    query = Cliente.query.filter(Cliente.nome.ilike(f'%{search}%')).limit(10).all()
+    # --- ALTERAÇÃO AQUI ---
+    # Removemos o "N°: " da formatação da 'label'
+    results = [{'id': cliente.id, 'label': f"{cliente.nome} ({cliente.numero_cliente})", 'value': cliente.nome} for cliente in query]
+    return jsonify(results)
+
+# @app.cli.command("init-db")
+# def init_db_command():
+#    db.create_all()
+#    print("Base de dados inicializada e tabelas criadas.")
+
+
+# @app.cli.command("create-admin")
+# def create_admin_command():
+#    username = input("Digite o nome de utilizador do ADMIN: ")
+#    password = getpass("Digite a senha do ADMIN: ")
+#    existing_user = User.query.filter_by(username=username).first()
+ #   if existing_user:
+ #       print(f"Erro: O utilizador '{username}' já existe.")
+ #       return
+ #   hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+ #   new_user = User(username=username, password_hash=hashed_password, is_admin=True)
+ #   db.session.add(new_user)
+ #   db.session.commit()
+ #   print(f"Utilizador ADMINISTRADOR '{username}' criado com sucesso!")
 
 if __name__ == '__main__':
-    app.run()
+    # Usa o iniciador do SocketIO, que é compatível com eventlet e ativa o modo de depuração
+    socketio.run(app, debug=True)
