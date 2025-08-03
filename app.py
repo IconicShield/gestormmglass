@@ -17,6 +17,8 @@ from flask_bcrypt import Bcrypt
 from sqlalchemy import or_, cast
 from functools import wraps
 import click
+import io
+import openpyxl
 from getpass import getpass
 from flask_socketio import SocketIO
 import fitz
