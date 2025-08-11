@@ -26,6 +26,7 @@ import fitz
 import re
 import io
 import openpyxl
+import time
 
 # --- INÍCIO DA CORREÇÃO ESTRUTURAL ---
 
@@ -303,7 +304,8 @@ def nova_entrada():
                 novo_anexo = Anexo(filename=anexo_filename, entrada=nova_entrada_obj)
                 db.session.add(novo_anexo)
         db.session.commit()
-        # socketio.emit('update_data')
+        global last_update_time
+        last_update_time = datetime.now()
         flash(f"{nova_entrada_obj.tipo} criado com sucesso!", 'success')
         return redirect(url_for('painel_controle'))
 
@@ -346,7 +348,8 @@ def editar_entrada(id):
                 db.session.add(novo_anexo)
                 
         db.session.commit()
-        # socketio.emit('update_data')
+        global last_update_time
+        last_update_time = datetime.now()
         flash(f'{entrada.tipo} atualizado com sucesso!', 'success')
         return redirect(url_for('painel_controle'))
         
@@ -363,13 +366,14 @@ def excluir_anexo(anexo_id):
         pass
     db.session.delete(anexo)
     db.session.commit()
-    socketio.emit('update_data')
+    # socketio.emit('update_data')
     flash('Anexo excluído com sucesso.', 'success')
     return redirect(url_for('editar_entrada', id=entrada_id))
 
 @app.route('/excluir/<int:id>', methods=['POST'])
 @login_required
 def excluir_entrada(id):
+    global last_update_time
     entrada_a_excluir = Entrada.query.get_or_404(id)
     for anexo in entrada_a_excluir.anexos:
         try:
@@ -378,7 +382,8 @@ def excluir_entrada(id):
             pass
     db.session.delete(entrada_a_excluir)
     db.session.commit()
-    socketio.emit('update_data')
+    # socketio.emit('update_data')
+    last_update_time = datetime.now()
     tipo_entrada = entrada_a_excluir.tipo
     if entrada_a_excluir.arquivado:
         flash(f'{tipo_entrada} arquivado foi excluído permanentemente!', 'danger')
@@ -386,19 +391,48 @@ def excluir_entrada(id):
     flash(f'{tipo_entrada} foi excluído com sucesso!', 'danger')
     return redirect(url_for('painel_controle'))
 
+# Variável global para controlar atualizações
+last_update_time = datetime.now()
+
 @app.route('/atualizar-status/<int:id>', methods=['POST'])
 @login_required
 def atualizar_status(id):
+    global last_update_time
     entrada = Entrada.query.get_or_404(id)
     data = request.get_json()
     novo_status = data.get('status')
     if novo_status in ['Não iniciado', 'Em andamento', 'Concluído']:
         entrada.status = novo_status
         db.session.commit()
-        socketio.emit('update_data')
+        last_update_time = datetime.now()
         novos_dados_dashboard = get_dashboard_data()
         return jsonify({'success': True, 'message': 'Status atualizado com sucesso!', 'dashboard': novos_dados_dashboard})
     return jsonify({'success': False, 'message': 'Status inválido.'}), 400
+
+@app.route('/stream')
+@login_required
+def stream():
+    """Server-Sent Events para atualizações em tempo real"""
+    def event_stream():
+        global last_update_time
+        client_last_update = datetime.now()
+        
+        while True:
+            # Verifica se houve atualizações
+            if last_update_time > client_last_update:
+                dashboard_data = get_dashboard_data()
+                import json
+                yield f"data: {json.dumps(dashboard_data)}\n\n"
+                client_last_update = datetime.now()
+            
+            # Aguarda 3 segundos antes da próxima verificação
+            import time
+            time.sleep(3)
+    
+    return Response(event_stream(), mimetype="text/event-stream", headers={
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
+    })
 
 @app.route('/converter/<int:id>', methods=['POST'])
 @login_required
@@ -408,7 +442,8 @@ def converter_para_pedido(id):
         orcamento.tipo = 'Pedido'
         orcamento.status = 'Não iniciado'
         db.session.commit()
-        socketio.emit('update_data')
+        global last_update_time
+        last_update_time = datetime.now()
         flash(f"Orçamento #{orcamento.numero_pedido} foi convertido em Pedido com sucesso!", 'success')
     else:
         flash('Esta entrada já é um Pedido.', 'warning')
@@ -420,7 +455,8 @@ def arquivar_entrada(id):
     entrada = Entrada.query.get_or_404(id)
     entrada.arquivado = True
     db.session.commit()
-    # socketio.emit('update_data')
+    global last_update_time
+    last_update_time = datetime.now()
     flash(f'{entrada.tipo} #{entrada.numero_pedido} foi arquivado com sucesso.', 'success')
     return redirect(url_for('painel_controle'))
 
@@ -473,7 +509,8 @@ def bulk_action():
                 db.session.delete(entrada)
             
             db.session.commit()
-            # socketio.emit('update_data')
+            global last_update_time
+            last_update_time = datetime.now()
             return jsonify({
                 'success': True, 
                 'message': f'{len(entradas)} entrada(s) excluída(s) com sucesso'
@@ -605,7 +642,8 @@ def desarquivar_entrada(id):
     entrada = Entrada.query.get_or_404(id)
     entrada.arquivado = False
     db.session.commit()
-    # socketio.emit('update_data')
+    global last_update_time
+    last_update_time = datetime.now()
     flash(f'{entrada.tipo} #{entrada.numero_pedido} foi restaurado com sucesso.', 'success')
     return redirect(url_for('pedidos_arquivados'))
 
@@ -1281,7 +1319,8 @@ def importar_entradas():
 
             if entradas_adicionadas > 0:
                 db.session.commit()
-                # socketio.emit('update_data')
+                global last_update_time
+                last_update_time = datetime.now()
 
             mensagem = ""
             if entradas_adicionadas > 0:

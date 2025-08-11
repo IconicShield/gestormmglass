@@ -190,12 +190,24 @@
             </nav>
 
             <div class="container-fluid pt-4">
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">{{ message }}<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button></div>{% endfor %}{% endif %}
-                {% endwith %}
-                
                 {% block content %}{% endblock %}
             </div>
+            
+            <!-- Container para notificações no canto inferior direito -->
+            <div id="notification-container"></div>
+            
+            <!-- Mensagens flash convertidas para notificações -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            {% for category, message in messages %}
+                                showNotification('{{ message|e }}', '{{ category }}');
+                            {% endfor %}
+                        });
+                    </script>
+                {% endif %}
+            {% endwith %}
         </div>
         </div>
 
@@ -203,7 +215,6 @@
 
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
 
     <script>
@@ -316,8 +327,96 @@
             }
         });
     });
+    
+    // Função para mostrar notificações no canto superior direito
+    function showNotification(message, category) {
+        const container = document.getElementById('notification-container');
+        const notification = document.createElement('div');
+        
+        // Mapear categorias Flask para classes Bootstrap
+        const categoryMap = {
+            'success': 'alert-success',
+            'danger': 'alert-danger',
+            'warning': 'alert-warning',
+            'info': 'alert-info'
+        };
+        
+        const alertClass = categoryMap[category] || 'alert-info';
+        
+        notification.className = `alert ${alertClass} alert-dismissible fade show notification-toast`;
+        notification.style.cssText = `
+            margin-bottom: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            font-size: 14px;
+            padding: 12px 15px;
+            position: relative;
+            animation: slideInRight 0.3s ease-out;
+        `;
+        
+        notification.innerHTML = `
+            ${message}
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close" style="font-size: 18px; line-height: 1;">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        `;
+        
+        container.appendChild(notification);
+        
+        // Auto-remover após 5 segundos
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.style.animation = 'slideOutRight 0.3s ease-in';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.parentNode.removeChild(notification);
+                    }
+                }, 300);
+            }
+        }, 5000);
+    }
 
     </script>
+
+<style>
+    /* Animações para as notificações */
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideOutRight {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+    
+    .notification-toast {
+        min-width: 300px;
+        max-width: 350px;
+        word-wrap: break-word;
+    }
+    
+    /* Posicionamento e estilo do container de notificações */
+    #notification-container {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 10000 !important;
+        max-width: 350px;
+    }
+</style>
 
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>

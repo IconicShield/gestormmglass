@@ -534,13 +534,41 @@
             });
         });
 
-        // Script para atualização em tempo real (Socket.IO)
-        var socket = io();
-        socket.on('update_data', function(msg) {
-            console.log('Update received!');
-            // Apenas recarrega a página para mostrar os dados mais recentes
-            location.reload();
-        });
+        // Script para atualização em tempo real usando Server-Sent Events
+        if (typeof(EventSource) !== "undefined") {
+            var eventSource = new EventSource('/stream');
+            eventSource.onmessage = function(event) {
+                try {
+                    var data = JSON.parse(event.data);
+                    
+                    // Atualiza o dashboard de Pedidos
+                    if (data.pedidos) {
+                        document.getElementById('dash-pedidos-total').textContent = data.pedidos.total;
+                        document.getElementById('dash-pedidos-nao-iniciado').textContent = data.pedidos.nao_iniciado;
+                        document.getElementById('dash-pedidos-em-andamento').textContent = data.pedidos.em_andamento;
+                        document.getElementById('dash-pedidos-concluido').textContent = data.pedidos.concluido;
+                    }
+                    
+                    // Atualiza o dashboard de Orçamentos
+                    if (data.orcamentos) {
+                        document.getElementById('dash-orcamentos-total').textContent = data.orcamentos.total;
+                        document.getElementById('dash-orcamentos-nao-iniciado').textContent = data.orcamentos.nao_iniciado;
+                        document.getElementById('dash-orcamentos-em-andamento').textContent = data.orcamentos.em_andamento;
+                        document.getElementById('dash-orcamentos-concluido').textContent = data.orcamentos.concluido;
+                    }
+                    
+                    console.log('Dashboard atualizado em tempo real');
+                } catch (e) {
+                    console.error('Erro ao processar dados SSE:', e);
+                }
+            };
+            
+            eventSource.onerror = function(event) {
+                console.log('Erro na conexão SSE, tentando reconectar...');
+            };
+        } else {
+            console.log('Seu navegador não suporta Server-Sent Events.');
+        }
     });
     
     // Funções para seleção em massa - PEDIDOS
