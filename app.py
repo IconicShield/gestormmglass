@@ -12,6 +12,7 @@ from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 from datetime import datetime
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.pool import NullPool
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_bcrypt import Bcrypt
 from sqlalchemy import or_, cast
@@ -69,6 +70,7 @@ else:
 
 app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'uploads')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'poolclass': NullPool}
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # --- FIM DO BLOCO CORRIGIDO ---
