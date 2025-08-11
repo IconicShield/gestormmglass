@@ -19,9 +19,81 @@
         <h6 class="mb-0">Clientes Cadastrados</h6>
     </div>
     <div class="card-body">
+        <!-- Formulário de Filtros -->
+        <form method="GET" class="mb-4">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="search_name">Buscar por Nome:</label>
+                        <input type="text" class="form-control" id="search_name" name="search_name" 
+                               value="{{ search_name }}" placeholder="Digite o nome do cliente">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="filter_tipo_pessoa">Tipo de Pessoa:</label>
+                        <select class="form-control" id="filter_tipo_pessoa" name="filter_tipo_pessoa">
+                            <option value="">Todos</option>
+                            <option value="Física" {{ 'selected' if filter_tipo_pessoa == 'Física' }}>Física</option>
+                            <option value="Jurídica" {{ 'selected' if filter_tipo_pessoa == 'Jurídica' }}>Jurídica</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-group">
+                        <label for="search_cpf_cnpj">CPF/CNPJ:</label>
+                        <input type="text" class="form-control" id="search_cpf_cnpj" name="search_cpf_cnpj" 
+                               value="{{ search_cpf_cnpj }}" placeholder="Digite CPF ou CNPJ">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="form-group">
+                        <label>&nbsp;</label>
+                        <div>
+                            <button type="submit" class="btn btn-primary btn-block">
+                                <i class="fas fa-search"></i> Filtrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12">
+                    <a href="{{ url_for('cadastro_clientes') }}" class="btn btn-secondary btn-sm">
+                        <i class="fas fa-times"></i> Limpar Filtros
+                    </a>
+                </div>
+            </div>
+        </form>
+        
+        <!-- Botões de ação em lote para Clientes -->
+        <div class="mb-3" id="clientes-bulk-actions" style="display: none;">
+            <div class="d-flex align-items-center">
+                <span class="mr-3 text-muted"><span id="clientes-selected-count">0</span> cliente(s) selecionado(s)</span>
+                <button type="button" class="btn btn-danger btn-sm" onclick="bulkDeleteClientes()">
+                    <i class="fas fa-trash-alt"></i> Excluir Selecionados
+                </button>
+            </div>
+        </div>
+        
+        <!-- Informações da paginação -->
+        <div class="mb-3">
+            <small class="text-muted">
+                Mostrando {{ ((clientes.page - 1) * clientes.per_page) + 1 }} a 
+                {{ clientes.page * clientes.per_page if clientes.page * clientes.per_page <= clientes.total else clientes.total }} 
+                de {{ clientes.total }} cliente(s) cadastrado(s)
+                {% if search_name or filter_tipo_pessoa or search_cpf_cnpj %}
+                    <span class="badge badge-info">Filtros aplicados</span>
+                {% endif %}
+            </small>
+        </div>
+        
         <table class="table table-hover table-sm table-uppercase">
             <thead class="thead-light">
                 <tr>
+                    <th width="30">
+                        <input type="checkbox" id="select-all-clientes" onchange="toggleAllClientes(this)">
+                    </th>
                     <th>N°</th>
                     <th>Nome</th>
                     <th>Telefone</th>
@@ -31,8 +103,11 @@
                 </tr>
             </thead>
             <tbody>
-                {% for cliente in clientes %}
+                {% for cliente in clientes.items %}
                 <tr>
+                    <td>
+                        <input type="checkbox" class="cliente-checkbox" value="{{ cliente.id }}" onchange="updateClientesBulkActions()">
+                    </td>
                     <td>{{ cliente.numero_cliente }}</td>
                     <td>
                         <button type="button" class="btn btn-link text-uppercase" data-toggle="modal" data-target="#detalhesCliente-{{ cliente.id }}" style="color: var(--text-color);">
@@ -51,17 +126,66 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="7" class="text-center">Nenhum cliente cadastrado.</td>
+                    <td colspan="8" class="text-center">Nenhum cliente cadastrado.</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
+
+<!-- Pagination -->
+{% if clientes.pages > 1 %}
+<nav aria-label="Navegação de páginas">
+    <ul class="pagination justify-content-center">
+        {% if clientes.has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('cadastro_clientes', page=clientes.prev_num, search_name=search_name, filter_tipo_pessoa=filter_tipo_pessoa, search_cpf_cnpj=search_cpf_cnpj) }}" aria-label="Anterior">
+                    <span aria-hidden="true">&laquo;</span>
+                </a>
+            </li>
+        {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">&laquo;</span>
+            </li>
+        {% endif %}
+        
+        {% for page_num in clientes.iter_pages() %}
+            {% if page_num %}
+                {% if page_num != clientes.page %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('cadastro_clientes', page=page_num, search_name=search_name, filter_tipo_pessoa=filter_tipo_pessoa, search_cpf_cnpj=search_cpf_cnpj) }}">{{ page_num }}</a>
+                    </li>
+                {% else %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ page_num }}</span>
+                    </li>
+                {% endif %}
+            {% else %}
+                <li class="page-item disabled">
+                    <span class="page-link">…</span>
+                </li>
+            {% endif %}
+        {% endfor %}
+        
+        {% if clientes.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('cadastro_clientes', page=clientes.next_num, search_name=search_name, filter_tipo_pessoa=filter_tipo_pessoa, search_cpf_cnpj=search_cpf_cnpj) }}" aria-label="Próximo">
+                    <span aria-hidden="true">&raquo;</span>
+                </a>
+            </li>
+        {% else %}
+            <li class="page-item disabled">
+                <span class="page-link">&raquo;</span>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
 {% endblock %}
 
 {% block modals %}
-    {% for cliente in clientes %}
+    {% for cliente in clientes.items %}
     <div class="modal fade" id="detalhesCliente-{{ cliente.id }}" tabindex="-1" role="dialog" aria-labelledby="modalLabel-{{ cliente.id }}" aria-hidden="true">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
@@ -156,4 +280,76 @@
         </div>
     </div>
     
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Funções para seleção em massa de Clientes
+function toggleAllClientes(selectAllCheckbox) {
+    const checkboxes = document.querySelectorAll('.cliente-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAllCheckbox.checked;
+    });
+    updateClientesBulkActions();
+}
+
+function updateClientesBulkActions() {
+    const checkboxes = document.querySelectorAll('.cliente-checkbox:checked');
+    const bulkActions = document.getElementById('clientes-bulk-actions');
+    const selectedCount = document.getElementById('clientes-selected-count');
+    
+    if (checkboxes.length > 0) {
+        bulkActions.style.display = 'block';
+        selectedCount.textContent = checkboxes.length;
+    } else {
+        bulkActions.style.display = 'none';
+    }
+    
+    // Atualizar estado do "selecionar todos"
+    const allCheckboxes = document.querySelectorAll('.cliente-checkbox');
+    const selectAllCheckbox = document.getElementById('select-all-clientes');
+    selectAllCheckbox.checked = allCheckboxes.length > 0 && checkboxes.length === allCheckboxes.length;
+}
+
+function bulkDeleteClientes() {
+    const checkboxes = document.querySelectorAll('.cliente-checkbox:checked');
+    const ids = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (ids.length === 0) {
+        alert('Selecione pelo menos um cliente para excluir.');
+        return;
+    }
+    
+    if (confirm(`Deseja excluir permanentemente ${ids.length} cliente(s) selecionado(s)? Esta ação não pode ser desfeita.`)) {
+        bulkActionClientes('delete', ids);
+    }
+}
+
+// Função para executar ações em lote para clientes
+function bulkActionClientes(action, ids) {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/bulk-action-clientes', true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+                const response = JSON.parse(xhr.responseText);
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert('Erro: ' + response.message);
+                }
+            } else {
+                alert('Erro ao processar a solicitação.');
+            }
+        }
+    };
+    
+    xhr.send(JSON.stringify({
+        action: action,
+        ids: ids
+    }));
+}
+</script>
 {% endblock %}

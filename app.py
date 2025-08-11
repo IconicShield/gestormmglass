@@ -1,8 +1,8 @@
 # app.py
 
 # A ORDEM AQUI É CRUCIAL PARA O EVENTLET
-import eventlet
-eventlet.monkey_patch()
+# import eventlet
+# eventlet.monkey_patch()
 
 # AGORA, importe todo o resto
 import os
@@ -20,7 +20,7 @@ import click
 import io
 import openpyxl
 from getpass import getpass
-from flask_socketio import SocketIO
+# from flask_socketio import SocketIO
 import fitz
 import re
 import io
@@ -35,7 +35,7 @@ load_dotenv()
 db = SQLAlchemy()
 bcrypt = Bcrypt()
 login_manager = LoginManager()
-socketio = SocketIO()
+# socketio = SocketIO()
 
 # 3. Crie a instância do app Flask
 app = Flask(__name__)
@@ -77,7 +77,7 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 db.init_app(app)
 bcrypt.init_app(app)
 login_manager.init_app(app)
-socketio.init_app(app, async_mode='eventlet')
+# socketio.init_app(app, async_mode='eventlet')
 
 # 6. Configure o LoginManager
 login_manager.login_view = 'login'
@@ -281,6 +281,7 @@ def nova_entrada():
             tipo=tipo_entrada,
             numero_pedido=numero_pedido,
             status=request.form.get('status'),
+            obra=request.form.get('obra'),
             descricao=request.form.get('descricao'),
             observacoes=request.form.get('observacoes')
         )
@@ -300,7 +301,7 @@ def nova_entrada():
                 novo_anexo = Anexo(filename=anexo_filename, entrada=nova_entrada_obj)
                 db.session.add(novo_anexo)
         db.session.commit()
-        socketio.emit('update_data')
+        # socketio.emit('update_data')
         flash(f"{nova_entrada_obj.tipo} criado com sucesso!", 'success')
         return redirect(url_for('painel_controle'))
 
@@ -343,7 +344,7 @@ def editar_entrada(id):
                 db.session.add(novo_anexo)
                 
         db.session.commit()
-        socketio.emit('update_data')
+        # socketio.emit('update_data')
         flash(f'{entrada.tipo} atualizado com sucesso!', 'success')
         return redirect(url_for('painel_controle'))
         
@@ -381,7 +382,7 @@ def excluir_entrada(id):
         flash(f'{tipo_entrada} arquivado foi excluído permanentemente!', 'danger')
         return redirect(url_for('pedidos_arquivados'))
     flash(f'{tipo_entrada} foi excluído com sucesso!', 'danger')
-    return redirect(url_for('inicio'))
+    return redirect(url_for('painel_controle'))
 
 @app.route('/atualizar-status/<int:id>', methods=['POST'])
 @login_required
@@ -409,7 +410,7 @@ def converter_para_pedido(id):
         flash(f"Orçamento #{orcamento.numero_pedido} foi convertido em Pedido com sucesso!", 'success')
     else:
         flash('Esta entrada já é um Pedido.', 'warning')
-    return redirect(url_for('inicio'))
+    return redirect(url_for('painel_controle'))
 
 @app.route('/arquivar/<int:id>', methods=['POST'])
 @login_required
@@ -417,9 +418,184 @@ def arquivar_entrada(id):
     entrada = Entrada.query.get_or_404(id)
     entrada.arquivado = True
     db.session.commit()
-    socketio.emit('update_data')
+    # socketio.emit('update_data')
     flash(f'{entrada.tipo} #{entrada.numero_pedido} foi arquivado com sucesso.', 'success')
-    return redirect(url_for('inicio'))
+    return redirect(url_for('painel_controle'))
+
+@app.route('/bulk-action', methods=['POST'])
+@login_required
+def bulk_action():
+    """Processa ações em lote (arquivar ou excluir múltiplas entradas)."""
+    try:
+        data = request.get_json()
+        action = data.get('action')
+        ids = data.get('ids', [])
+        entry_type = data.get('type')
+        
+        if not action or not ids:
+            return jsonify({'success': False, 'message': 'Parâmetros inválidos'}), 400
+        
+        # Converte IDs para inteiros
+        try:
+            ids = [int(id_str) for id_str in ids]
+        except ValueError:
+            return jsonify({'success': False, 'message': 'IDs inválidos'}), 400
+        
+        # Busca as entradas
+        entradas = Entrada.query.filter(Entrada.id.in_(ids)).all()
+        
+        if len(entradas) != len(ids):
+            return jsonify({'success': False, 'message': 'Algumas entradas não foram encontradas'}), 404
+        
+        if action == 'archive':
+            # Arquiva as entradas selecionadas
+            for entrada in entradas:
+                entrada.arquivado = True
+            db.session.commit()
+            # socketio.emit('update_data')
+            return jsonify({
+                'success': True, 
+                'message': f'{len(entradas)} entrada(s) arquivada(s) com sucesso'
+            })
+            
+        elif action == 'delete':
+            # Exclui as entradas selecionadas
+            for entrada in entradas:
+                # Remove anexos físicos
+                for anexo in entrada.anexos:
+                    try:
+                        os.remove(os.path.join(app.config['UPLOAD_FOLDER'], anexo.filename))
+                    except FileNotFoundError:
+                        pass
+                # Remove a entrada do banco
+                db.session.delete(entrada)
+            
+            db.session.commit()
+            # socketio.emit('update_data')
+            return jsonify({
+                'success': True, 
+                'message': f'{len(entradas)} entrada(s) excluída(s) com sucesso'
+            })
+        
+        else:
+            return jsonify({'success': False, 'message': 'Ação não reconhecida'}), 400
+            
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Erro interno: {str(e)}'}), 500
+
+@app.route('/bulk-action-archived', methods=['POST'])
+@login_required
+def bulk_action_archived():
+    """Processa ações em lote para entradas arquivadas (restaurar ou excluir permanentemente)."""
+    try:
+        data = request.get_json()
+        action = data.get('action')
+        ids = data.get('ids', [])
+        
+        if not action or not ids:
+            return jsonify({'success': False, 'message': 'Parâmetros inválidos'}), 400
+        
+        # Converte IDs para inteiros
+        try:
+            ids = [int(id_str) for id_str in ids]
+        except ValueError:
+            return jsonify({'success': False, 'message': 'IDs inválidos'}), 400
+        
+        # Busca as entradas arquivadas
+        entradas = Entrada.query.filter(Entrada.id.in_(ids), Entrada.arquivado == True).all()
+        
+        if len(entradas) != len(ids):
+            return jsonify({'success': False, 'message': 'Algumas entradas não foram encontradas'}), 404
+        
+        if action == 'restore':
+            # Restaura as entradas selecionadas
+            for entrada in entradas:
+                entrada.arquivado = False
+            db.session.commit()
+            return jsonify({
+                'success': True, 
+                'message': f'{len(entradas)} entrada(s) restaurada(s) com sucesso'
+            })
+            
+        elif action == 'delete':
+            # Exclui permanentemente as entradas selecionadas
+            for entrada in entradas:
+                # Remove anexos físicos
+                for anexo in entrada.anexos:
+                    try:
+                        os.remove(os.path.join(app.config['UPLOAD_FOLDER'], anexo.filename))
+                    except FileNotFoundError:
+                        pass
+                # Remove a entrada do banco
+                db.session.delete(entrada)
+            
+            db.session.commit()
+            return jsonify({
+                'success': True, 
+                'message': f'{len(entradas)} entrada(s) excluída(s) permanentemente com sucesso'
+            })
+        
+        else:
+            return jsonify({'success': False, 'message': 'Ação não reconhecida'}), 400
+            
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Erro interno: {str(e)}'}), 500
+
+@app.route('/bulk-action-clientes', methods=['POST'])
+@login_required
+def bulk_action_clientes():
+    """Processa ações em lote para clientes (excluir múltiplos clientes)."""
+    try:
+        data = request.get_json()
+        action = data.get('action')
+        ids = data.get('ids', [])
+        
+        if not action or not ids:
+            return jsonify({'success': False, 'message': 'Parâmetros inválidos'}), 400
+        
+        # Converte IDs para inteiros
+        try:
+            ids = [int(id_str) for id_str in ids]
+        except ValueError:
+            return jsonify({'success': False, 'message': 'IDs inválidos'}), 400
+        
+        # Busca os clientes
+        clientes = Cliente.query.filter(Cliente.id.in_(ids)).all()
+        
+        if len(clientes) != len(ids):
+            return jsonify({'success': False, 'message': 'Alguns clientes não foram encontrados'}), 404
+        
+        if action == 'delete':
+            # Verifica se algum cliente tem entradas associadas
+            clientes_com_entradas = []
+            for cliente in clientes:
+                if cliente.entradas:
+                    clientes_com_entradas.append(cliente.nome)
+            
+            if clientes_com_entradas:
+                return jsonify({
+                    'success': False, 
+                    'message': f'Não é possível excluir os seguintes clientes pois possuem pedidos/orçamentos associados: {", ".join(clientes_com_entradas)}'
+                }), 400
+            
+            # Exclui os clientes selecionados
+            for cliente in clientes:
+                db.session.delete(cliente)
+            
+            db.session.commit()
+            return jsonify({
+                'success': True, 
+                'message': f'{len(clientes)} cliente(s) excluído(s) com sucesso'
+            })
+        
+        else:
+            return jsonify({'success': False, 'message': 'Ação não reconhecida'}), 400
+            
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Erro interno: {str(e)}'}), 500
 
 @app.route('/desarquivar/<int:id>', methods=['POST'])
 @login_required
@@ -427,29 +603,92 @@ def desarquivar_entrada(id):
     entrada = Entrada.query.get_or_404(id)
     entrada.arquivado = False
     db.session.commit()
-    socketio.emit('update_data')
+    # socketio.emit('update_data')
     flash(f'{entrada.tipo} #{entrada.numero_pedido} foi restaurado com sucesso.', 'success')
     return redirect(url_for('pedidos_arquivados'))
 
 @app.route('/arquivados')
 @login_required
 def pedidos_arquivados():
-    # Lógica de filtro (mantida para futura implementação na página de arquivados)
-    search_query = request.args.get('q', '')
-    selected_status = request.args.get('status', '')
+    """Exibe a página de pedidos e orçamentos arquivados com paginação e filtros (30 itens por página)."""
+    # Parâmetros de filtro
+    search_cliente = request.args.get('search_cliente', '').strip()
+    filter_status = request.args.get('filter_status', '')
+    filter_tipo = request.args.get('filter_tipo', '')
+    page_pedidos = request.args.get('pedidos_page', 1, type=int)
+    page_orcamentos = request.args.get('orcamentos_page', 1, type=int)
+    per_page = 30  # Limite de 30 itens por página
 
-    # Busca pedidos arquivados
-    pedidos_arquivados_query = Entrada.query.filter_by(tipo='Pedido', arquivado=True)
-    # Busca orçamentos arquivados
-    orcamentos_arquivados_query = Entrada.query.filter_by(tipo='Orçamento', arquivado=True)
+    # Query base para entradas arquivadas
+    base_query = Entrada.query.filter_by(arquivado=True)
+    
+    # Aplicar filtro por tipo se especificado
+    if filter_tipo:
+        base_query = base_query.filter(Entrada.tipo == filter_tipo)
+    
+    # Aplicar filtro por cliente se especificado
+    if search_cliente:
+        base_query = base_query.join(Cliente, Entrada.cliente_id == Cliente.id, isouter=True).filter(
+            db.or_(
+                Cliente.nome.ilike(f'%{search_cliente}%'),
+                Entrada.cliente_nome_temp.ilike(f'%{search_cliente}%')
+            )
+        )
+    
+    # Aplicar filtro por status se especificado
+    if filter_status:
+        base_query = base_query.filter(Entrada.status == filter_status)
+    
+    # Query para pedidos arquivados - criar uma nova query baseada na base_query
+    if not filter_tipo or filter_tipo == 'Pedido':
+        pedidos_query = Entrada.query.filter_by(arquivado=True).filter(Entrada.tipo == 'Pedido')
+        # Aplicar os mesmos filtros da base_query
+        if search_cliente:
+            pedidos_query = pedidos_query.join(Cliente, Entrada.cliente_id == Cliente.id, isouter=True).filter(
+                db.or_(
+                    Cliente.nome.ilike(f'%{search_cliente}%'),
+                    Entrada.cliente_nome_temp.ilike(f'%{search_cliente}%')
+                )
+            )
+        if filter_status:
+            pedidos_query = pedidos_query.filter(Entrada.status == filter_status)
+    else:
+        pedidos_query = Entrada.query.filter_by(id=-1)  # Query vazia se filtro não for Pedido
+    
+    # Query para orçamentos arquivados - criar uma nova query baseada na base_query
+    if not filter_tipo or filter_tipo == 'Orçamento':
+        orcamentos_query = Entrada.query.filter_by(arquivado=True).filter(Entrada.tipo == 'Orçamento')
+        # Aplicar os mesmos filtros da base_query
+        if search_cliente:
+            orcamentos_query = orcamentos_query.join(Cliente, Entrada.cliente_id == Cliente.id, isouter=True).filter(
+                db.or_(
+                    Cliente.nome.ilike(f'%{search_cliente}%'),
+                    Entrada.cliente_nome_temp.ilike(f'%{search_cliente}%')
+                )
+            )
+        if filter_status:
+            orcamentos_query = orcamentos_query.filter(Entrada.status == filter_status)
+    else:
+        orcamentos_query = Entrada.query.filter_by(id=-1)  # Query vazia se filtro não for Orçamento
+    
+    # Paginação para pedidos
+    pedidos_paginados = pedidos_query.order_by(Entrada.data_registro.desc()).paginate(
+        page=page_pedidos, per_page=per_page, error_out=False
+    )
+    
+    # Paginação para orçamentos
+    orcamentos_paginados = orcamentos_query.order_by(Entrada.data_registro.desc()).paginate(
+        page=page_orcamentos, per_page=per_page, error_out=False
+    )
 
-    # (A lógica de filtro pode ser aplicada aqui no futuro, se necessário)
-
-    pedidos = pedidos_arquivados_query.order_by(Entrada.data_registro.desc()).all()
-    orcamentos = orcamentos_arquivados_query.order_by(Entrada.data_registro.desc()).all()
-
-    return render_template('pedidos_arquivados.html', pedidos=pedidos, orcamentos=orcamentos, 
-                           search_query=search_query, selected_status=selected_status)
+    return render_template('pedidos_arquivados.html', 
+                         pedidos=pedidos_paginados, 
+                         orcamentos=orcamentos_paginados,
+                         search_cliente=search_cliente,
+                         filter_status=filter_status,
+                         filter_tipo=filter_tipo,
+                         pedidos_page=page_pedidos,
+                         orcamentos_page=page_orcamentos)
 
 
 @app.route('/gerir_usuarios', methods=['GET', 'POST'])
@@ -467,9 +706,9 @@ def gerir_usuarios():
             hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
             new_user = User(username=username, password_hash=hashed_password, is_admin=is_admin)
             db.session.add(new_user)
-            db.session.commit()
-            socketio.emit('update_data')
-            flash(f'Utilizador {username} criado com sucesso!', 'success')
+        db.session.commit()
+        # socketio.emit('update_data')
+        flash(f'Utilizador {username} criado com sucesso!', 'success')
         return redirect(url_for('gerir_usuarios'))
     users = User.query.all()
     return render_template('gerir_usuarios.html', users=users)
@@ -485,7 +724,7 @@ def excluir_usuario(user_id):
         return redirect(url_for('gerir_usuarios'))
     db.session.delete(user_to_delete)
     db.session.commit()
-    socketio.emit('update_data')
+    # socketio.emit('update_data')
     flash(f'Utilizador {user_to_delete.username} excluído com sucesso.', 'success')
     return redirect(url_for('gerir_usuarios'))
     
@@ -600,9 +839,38 @@ def relatorio_pedidos():
 @app.route('/cadastro-clientes')
 @login_required
 def cadastro_clientes():
-    """Exibe a página de gestão de clientes com a lista de todos os clientes."""
-    clientes = Cliente.query.order_by(Cliente.numero_cliente).all()
-    return render_template('cadastro_clientes.html', clientes=clientes)
+    """Exibe a página de gestão de clientes com paginação e filtros (30 clientes por página)."""
+    page = request.args.get('page', 1, type=int)
+    per_page = 30  # Limite de 30 clientes por página
+    
+    # Parâmetros de filtro
+    search_name = request.args.get('search_name', '').strip()
+    filter_tipo_pessoa = request.args.get('filter_tipo_pessoa', '')
+    search_cpf_cnpj = request.args.get('search_cpf_cnpj', '').strip()
+    
+    # Query base
+    query = Cliente.query
+    
+    # Aplicar filtros
+    if search_name:
+        query = query.filter(Cliente.nome.ilike(f'%{search_name}%'))
+    
+    if filter_tipo_pessoa:
+        query = query.filter(Cliente.tipo_pessoa == filter_tipo_pessoa)
+    
+    if search_cpf_cnpj:
+        query = query.filter(Cliente.cpf_cnpj.ilike(f'%{search_cpf_cnpj}%'))
+    
+    # Paginação
+    clientes_paginados = query.order_by(Cliente.numero_cliente).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    
+    return render_template('cadastro_clientes.html', 
+                         clientes=clientes_paginados,
+                         search_name=search_name,
+                         filter_tipo_pessoa=filter_tipo_pessoa,
+                         search_cpf_cnpj=search_cpf_cnpj)
 
 @app.route('/novo-cliente/<tipo>', methods=['GET', 'POST'])
 @login_required
@@ -1011,7 +1279,7 @@ def importar_entradas():
 
             if entradas_adicionadas > 0:
                 db.session.commit()
-                socketio.emit('update_data')
+                # socketio.emit('update_data')
 
             mensagem = ""
             if entradas_adicionadas > 0:
@@ -1066,4 +1334,5 @@ def buscar_clientes():
 
 if __name__ == '__main__':
     # Usa o iniciador do SocketIO, que é compatível com eventlet e ativa o modo de depuração
-    socketio.run(app, debug=True)
+    # socketio.run(app, debug=True, host='127.0.0.1', port=5000)
+    app.run(debug=True, host='localhost', port=5000)

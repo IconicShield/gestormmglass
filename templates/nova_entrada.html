@@ -24,29 +24,29 @@
                 <div class="form-group col-md-4">
                     <label for="status">Status (*)</label>
                     <select id="status" name="status" class="form-control" required>
-                        <option value="Não iniciado" selected>Não iniciado</option>
-                        <option value="Em andamento">Em andamento</option>
-                        <option value="Concluído">Concluído</option>
+                        <option value="Não iniciado" {% if form_data.status == 'Não iniciado' or not form_data.status %}selected{% endif %}>Não iniciado</option>
+                        <option value="Em andamento" {% if form_data.status == 'Em andamento' %}selected{% endif %}>Em andamento</option>
+                        <option value="Concluído" {% if form_data.status == 'Concluído' %}selected{% endif %}>Concluído</option>
                     </select>
                 </div>
             </div>
 
             <div class="form-group">
                 <label for="cliente_nome">Cliente (*)</label>
-                <input type="text" class="form-control" id="cliente_nome" name="cliente_nome" placeholder="Digite para buscar um cliente ou cadastrar um novo" required>
-                <input type="hidden" id="cliente_id" name="cliente_id">
+                <input type="text" class="form-control" id="cliente_nome" name="cliente_nome" placeholder="Digite para buscar um cliente ou cadastrar um novo" value="{{ form_data.cliente_nome or '' }}" required>
+                <input type="hidden" id="cliente_id" name="cliente_id" value="{{ form_data.cliente_id or '' }}">
             </div>
             <div class="form-group">
                 <label for="obra">Obra</label>
-                <input type="text" name="obra" class="form-control">
+                <input type="text" name="obra" class="form-control" value="{{ form_data.obra or '' }}">
             </div>
             <div class="form-group">
                 <label for="descricao">Descrição (*)</label>
-                <textarea class="form-control" id="descricao" name="descricao" rows="3" required></textarea>
+                <textarea class="form-control" id="descricao" name="descricao" rows="3" required>{{ form_data.descricao or '' }}</textarea>
             </div>
             <div class="form-group">
                 <label for="observacoes">Observações</label>
-                <textarea class="form-control" id="observacoes" name="observacoes" rows="3"></textarea>
+                <textarea class="form-control" id="observacoes" name="observacoes" rows="3">{{ form_data.observacoes or '' }}</textarea>
             </div>
             <div class="form-group">
                 <label for="anexos">Anexos</label>

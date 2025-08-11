@@ -137,13 +137,35 @@
     </div>
 
     <h3>Pedidos</h3>
+    
+    <!-- Botões de ação em lote para Pedidos -->
+    <div class="mb-3" id="pedidos-bulk-actions" style="display: none;">
+        <div class="d-flex align-items-center">
+            <span class="mr-3 text-muted"><span id="pedidos-selected-count">0</span> item(ns) selecionado(s)</span>
+            <button type="button" class="btn btn-secondary btn-sm mr-2" onclick="bulkArchivePedidos()">
+                <i class="fas fa-archive"></i> Arquivar Selecionados
+            </button>
+            <button type="button" class="btn btn-danger btn-sm" onclick="bulkDeletePedidos()">
+                <i class="fas fa-trash-alt"></i> Excluir Selecionados
+            </button>
+        </div>
+    </div>
+    
     <table class="table table-hover table-sm shadow-sm rounded table-uppercase">
         <thead class="thead-light">
-            <tr><th>Data</th><th>N° Pedido</th><th>N° Cliente</th><th>Cliente</th><th>Obra</th><th>Status</th><th>Descrição</th><th>Observações</th><th>Anexos</th><th>Ações</th></tr>
+            <tr>
+                <th width="30">
+                    <input type="checkbox" id="select-all-pedidos" onchange="toggleAllPedidos(this)">
+                </th>
+                <th>Data</th><th>N° Pedido</th><th>N° Cliente</th><th>Cliente</th><th>Obra</th><th>Status</th><th>Descrição</th><th>Observações</th><th>Anexos</th><th>Ações</th>
+            </tr>
         </thead>
         <tbody>
             {% for entrada in pedidos %}
             <tr>
+                <td>
+                    <input type="checkbox" class="pedido-checkbox" value="{{ entrada.id }}" onchange="updatePedidosBulkActions()">
+                </td>
                 <td>{{ entrada.data_registro.strftime('%d/%m/%Y') }}</td>
                 <td>
                     <button type="button" class="btn btn-outline-secondary btn-sm" style="color: var(--text-color);" data-toggle="modal" data-target="#detalhesModal-{{ entrada.id }}">
@@ -178,19 +200,41 @@
                 <td><form action="{{ url_for('arquivar_entrada', id=entrada.id) }}" method="post" style="display: inline;"><button type="submit" class="btn btn-xs btn-secondary" title="Arquivar"><i class="fas fa-archive"></i></button></form><a href="{{ url_for('editar_entrada', id=entrada.id) }}" class="btn btn-xs btn-info" title="Editar"><i class="fas fa-edit"></i></a><form action="{{ url_for('excluir_entrada', id=entrada.id) }}" method="post" style="display: inline;" onsubmit="return confirm('Tem a certeza?');"><button type="submit" class="btn btn-xs btn-danger" title="Excluir"><i class="fas fa-trash-alt"></i></button></form></td>
             </tr>
             {% else %}
-            <tr><td colspan="10" class="text-center">Nenhum pedido ativo encontrado.</td></tr>
+            <tr><td colspan="11" class="text-center">Nenhum pedido ativo encontrado.</td></tr>
             {% endfor %}
         </tbody>
     </table>
     <br>
     <h3>Orçamentos</h3>
+    
+    <!-- Botões de ação em lote para Orçamentos -->
+    <div class="mb-3" id="orcamentos-bulk-actions" style="display: none;">
+        <div class="d-flex align-items-center">
+            <span class="mr-3 text-muted"><span id="orcamentos-selected-count">0</span> item(ns) selecionado(s)</span>
+            <button type="button" class="btn btn-secondary btn-sm mr-2" onclick="bulkArchiveOrcamentos()">
+                <i class="fas fa-archive"></i> Arquivar Selecionados
+            </button>
+            <button type="button" class="btn btn-danger btn-sm" onclick="bulkDeleteOrcamentos()">
+                <i class="fas fa-trash-alt"></i> Excluir Selecionados
+            </button>
+        </div>
+    </div>
+    
     <table class="table table-hover table-sm shadow-sm rounded table-uppercase">
         <thead class="thead-light">
-            <tr><th>Data</th><th>N° Pedido</th><th>N° Cliente</th><th>Cliente</th><th>Obra</th><th>Status</th><th>Descrição</th><th>Observações</th><th>Anexos</th><th>Ações</th></tr>
+            <tr>
+                <th width="30">
+                    <input type="checkbox" id="select-all-orcamentos" onchange="toggleAllOrcamentos(this)">
+                </th>
+                <th>Data</th><th>N° Pedido</th><th>N° Cliente</th><th>Cliente</th><th>Obra</th><th>Status</th><th>Descrição</th><th>Observações</th><th>Anexos</th><th>Ações</th>
+            </tr>
         </thead>
         <tbody>
             {% for entrada in orcamentos %}
             <tr>
+                <td>
+                    <input type="checkbox" class="orcamento-checkbox" value="{{ entrada.id }}" onchange="updateOrcamentosBulkActions()">
+                </td>
                 <td>{{ entrada.data_registro.strftime('%d/%m/%Y') }}</td>
                 <td><button type="button" class="btn btn-outline-secondary btn-sm" style="color: var(--text-color);" data-toggle="modal" data-target="#detalhesModal-{{ entrada.id }}">{% if entrada.numero_pedido > 1000000000 %}<i class="fas fa-search"></i> Detalhes{% else %}{{ entrada.numero_pedido }}{% endif %}</button></td>
                 <td>
@@ -221,7 +265,7 @@
                 <td><form action="{{ url_for('arquivar_entrada', id=entrada.id) }}" method="post" style="display: inline;"><button type="submit" class="btn btn-xs btn-secondary" title="Arquivar"><i class="fas fa-archive"></i></button></form><form action="{{ url_for('converter_para_pedido', id=entrada.id) }}" method="post" style="display: inline;" onsubmit="return confirm('Converter em Pedido?');"><button type="submit" class="btn btn-xs btn-success" title="Converter"><i class="fas fa-check-circle"></i></button></form><a href="{{ url_for('editar_entrada', id=entrada.id) }}" class="btn btn-xs btn-info" title="Editar"><i class="fas fa-edit"></i></a><form action="{{ url_for('excluir_entrada', id=entrada.id) }}" method="post" style="display: inline;" onsubmit="return confirm('Tem a certeza?');"><button type="submit" class="btn btn-xs btn-danger" title="Excluir"><i class="fas fa-trash-alt"></i></button></form></td>
             </tr>
             {% else %}
-            <tr><td colspan="10" class="text-center">Nenhum orçamento encontrado.</td></tr>
+            <tr><td colspan="11" class="text-center">Nenhum orçamento encontrado.</td></tr>
             {% endfor %}
         </tbody>
     </table>
@@ -498,5 +542,167 @@
             location.reload();
         });
     });
+    
+    // Funções para seleção em massa - PEDIDOS
+    function toggleAllPedidos(selectAllCheckbox) {
+        const checkboxes = document.querySelectorAll('.pedido-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = selectAllCheckbox.checked;
+        });
+        updatePedidosBulkActions();
+    }
+    
+    function updatePedidosBulkActions() {
+        const checkboxes = document.querySelectorAll('.pedido-checkbox');
+        const checkedBoxes = document.querySelectorAll('.pedido-checkbox:checked');
+        const bulkActions = document.getElementById('pedidos-bulk-actions');
+        const selectedCount = document.getElementById('pedidos-selected-count');
+        const selectAllCheckbox = document.getElementById('select-all-pedidos');
+        
+        selectedCount.textContent = checkedBoxes.length;
+        
+        if (checkedBoxes.length > 0) {
+            bulkActions.style.display = 'block';
+        } else {
+            bulkActions.style.display = 'none';
+        }
+        
+        // Atualiza o estado do checkbox "selecionar todos"
+        if (checkedBoxes.length === checkboxes.length && checkboxes.length > 0) {
+            selectAllCheckbox.checked = true;
+            selectAllCheckbox.indeterminate = false;
+        } else if (checkedBoxes.length > 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = true;
+        } else {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        }
+    }
+    
+    // Funções para seleção em massa - ORÇAMENTOS
+    function toggleAllOrcamentos(selectAllCheckbox) {
+        const checkboxes = document.querySelectorAll('.orcamento-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = selectAllCheckbox.checked;
+        });
+        updateOrcamentosBulkActions();
+    }
+    
+    function updateOrcamentosBulkActions() {
+        const checkboxes = document.querySelectorAll('.orcamento-checkbox');
+        const checkedBoxes = document.querySelectorAll('.orcamento-checkbox:checked');
+        const bulkActions = document.getElementById('orcamentos-bulk-actions');
+        const selectedCount = document.getElementById('orcamentos-selected-count');
+        const selectAllCheckbox = document.getElementById('select-all-orcamentos');
+        
+        selectedCount.textContent = checkedBoxes.length;
+        
+        if (checkedBoxes.length > 0) {
+            bulkActions.style.display = 'block';
+        } else {
+            bulkActions.style.display = 'none';
+        }
+        
+        // Atualiza o estado do checkbox "selecionar todos"
+        if (checkedBoxes.length === checkboxes.length && checkboxes.length > 0) {
+            selectAllCheckbox.checked = true;
+            selectAllCheckbox.indeterminate = false;
+        } else if (checkedBoxes.length > 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = true;
+        } else {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        }
+    }
+    
+    // Funções de ação em lote - PEDIDOS
+    function bulkArchivePedidos() {
+        const checkedBoxes = document.querySelectorAll('.pedido-checkbox:checked');
+        const ids = Array.from(checkedBoxes).map(cb => cb.value);
+        
+        if (ids.length === 0) {
+            alert('Nenhum pedido selecionado.');
+            return;
+        }
+        
+        if (confirm(`Tem certeza que deseja arquivar ${ids.length} pedido(s) selecionado(s)?`)) {
+            bulkAction('archive', ids, 'pedidos');
+        }
+    }
+    
+    function bulkDeletePedidos() {
+        const checkedBoxes = document.querySelectorAll('.pedido-checkbox:checked');
+        const ids = Array.from(checkedBoxes).map(cb => cb.value);
+        
+        if (ids.length === 0) {
+            alert('Nenhum pedido selecionado.');
+            return;
+        }
+        
+        if (confirm(`ATENÇÃO: Esta ação irá excluir permanentemente ${ids.length} pedido(s) selecionado(s). Tem certeza?`)) {
+            bulkAction('delete', ids, 'pedidos');
+        }
+    }
+    
+    // Funções de ação em lote - ORÇAMENTOS
+    function bulkArchiveOrcamentos() {
+        const checkedBoxes = document.querySelectorAll('.orcamento-checkbox:checked');
+        const ids = Array.from(checkedBoxes).map(cb => cb.value);
+        
+        if (ids.length === 0) {
+            alert('Nenhum orçamento selecionado.');
+            return;
+        }
+        
+        if (confirm(`Tem certeza que deseja arquivar ${ids.length} orçamento(s) selecionado(s)?`)) {
+            bulkAction('archive', ids, 'orcamentos');
+        }
+    }
+    
+    function bulkDeleteOrcamentos() {
+        const checkedBoxes = document.querySelectorAll('.orcamento-checkbox:checked');
+        const ids = Array.from(checkedBoxes).map(cb => cb.value);
+        
+        if (ids.length === 0) {
+            alert('Nenhum orçamento selecionado.');
+            return;
+        }
+        
+        if (confirm(`ATENÇÃO: Esta ação irá excluir permanentemente ${ids.length} orçamento(s) selecionado(s). Tem certeza?`)) {
+            bulkAction('delete', ids, 'orcamentos');
+        }
+    }
+    
+    // Função genérica para ações em lote
+    function bulkAction(action, ids, type) {
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', '/bulk-action', true);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        
+        xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                const data = JSON.parse(xhr.responseText);
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Erro: ' + (data.message || 'Ocorreu um erro desconhecido.'));
+                }
+            } else {
+                alert('Erro de comunicação com o servidor.');
+            }
+        };
+        
+        xhr.onerror = function() {
+            alert('Erro de comunicação com o servidor.');
+        };
+        
+        xhr.send(JSON.stringify({
+            action: action,
+            ids: ids,
+            type: type
+        }));
+    }
     </script>
 {% endblock %}

@@ -9,12 +9,98 @@
         </div>
     </div>
 
+    <!-- Formulário de Filtros -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            <h6 class="mb-0">Filtros de Busca</h6>
+        </div>
+        <div class="card-body">
+            <form method="GET" class="mb-0">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="search_cliente">Buscar por Cliente:</label>
+                            <input type="text" class="form-control" id="search_cliente" name="search_cliente" 
+                                   value="{{ search_cliente }}" placeholder="Digite o nome do cliente">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="filter_status">Status:</label>
+                            <select class="form-control" id="filter_status" name="filter_status">
+                                <option value="">Todos</option>
+                                <option value="Não iniciado" {{ 'selected' if filter_status == 'Não iniciado' }}>Não iniciado</option>
+                                <option value="Em andamento" {{ 'selected' if filter_status == 'Em andamento' }}>Em andamento</option>
+                                <option value="Concluído" {{ 'selected' if filter_status == 'Concluído' }}>Concluído</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="filter_tipo">Tipo:</label>
+                            <select class="form-control" id="filter_tipo" name="filter_tipo">
+                                <option value="">Todos</option>
+                                <option value="Pedido" {{ 'selected' if filter_tipo == 'Pedido' }}>Pedido</option>
+                                <option value="Orçamento" {{ 'selected' if filter_tipo == 'Orçamento' }}>Orçamento</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label>&nbsp;</label>
+                            <div>
+                                <button type="submit" class="btn btn-primary btn-block">
+                                    <i class="fas fa-search"></i> Filtrar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <a href="{{ url_for('pedidos_arquivados') }}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-times"></i> Limpar Filtros
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="row">
         <div class="col-lg-6">
             <h3><i class="fas fa-box-open"></i> Pedidos Arquivados</h3>
+            
+            <!-- Botões de ação em lote para Pedidos Arquivados -->
+            <div class="mb-3" id="pedidos-arquivados-bulk-actions" style="display: none;">
+                <div class="d-flex align-items-center">
+                    <span class="mr-3 text-muted"><span id="pedidos-arquivados-selected-count">0</span> item(ns) selecionado(s)</span>
+                    <button type="button" class="btn btn-info btn-sm mr-2" onclick="bulkRestorePedidosArquivados()">
+                        <i class="fas fa-undo"></i> Restaurar Selecionados
+                    </button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="bulkDeletePedidosArquivados()">
+                        <i class="fas fa-trash-alt"></i> Excluir Selecionados
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Informações da paginação -->
+            <div class="mb-3">
+                <small class="text-muted">
+                    Mostrando {{ ((pedidos.page - 1) * pedidos.per_page) + 1 }} a 
+                    {{ pedidos.page * pedidos.per_page if pedidos.page * pedidos.per_page <= pedidos.total else pedidos.total }} 
+                    de {{ pedidos.total }} pedido(s) arquivado(s)
+                    {% if search_cliente or filter_status or filter_tipo %}
+                        <span class="badge badge-info">Filtros aplicados</span>
+                    {% endif %}
+                </small>
+            </div>
             <table class="table table-hover table-sm shadow-sm rounded table-uppercase">
                 <thead class="thead-light">
                     <tr>
+                        <th width="30">
+                            <input type="checkbox" id="select-all-pedidos-arquivados" onchange="toggleAllPedidosArquivados(this)">
+                        </th>
                         <th>N°</th>
                         <th>N° Cliente</th>
                         <th>Cliente</th>
@@ -23,8 +109,11 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for entrada in pedidos %}
+                    {% for entrada in pedidos.items %}
                     <tr>
+                        <td>
+                            <input type="checkbox" class="pedido-arquivado-checkbox" value="{{ entrada.id }}" onchange="updatePedidosArquivadosBulkActions()">
+                        </td>
                         <td>
                             <button type="button" class="btn btn-outline-secondary btn-sm" style="color: var(--text-color);" data-toggle="modal" data-target="#detalhesModal-{{ entrada.id }}">
                                 {% if entrada.numero_pedido > 1000000000 and entrada.tipo == 'Orçamento' %}
@@ -71,7 +160,7 @@
                         </td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="4" class="text-center">Nenhum pedido arquivado.</td></tr>
+                    <tr><td colspan="6" class="text-center">Nenhum pedido arquivado.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -79,9 +168,37 @@
 
         <div class="col-lg-6">
             <h3><i class="fas fa-file-invoice-dollar"></i> Orçamentos Arquivados</h3>
+            
+            <!-- Botões de ação em lote para Orçamentos Arquivados -->
+            <div class="mb-3" id="orcamentos-arquivados-bulk-actions" style="display: none;">
+                <div class="d-flex align-items-center">
+                    <span class="mr-3 text-muted"><span id="orcamentos-arquivados-selected-count">0</span> item(ns) selecionado(s)</span>
+                    <button type="button" class="btn btn-info btn-sm mr-2" onclick="bulkRestoreOrcamentosArquivados()">
+                        <i class="fas fa-undo"></i> Restaurar Selecionados
+                    </button>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="bulkDeleteOrcamentosArquivados()">
+                        <i class="fas fa-trash-alt"></i> Excluir Selecionados
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Informações da paginação para orçamentos -->
+            <div class="mb-3">
+                <small class="text-muted">
+                    Mostrando {{ ((orcamentos.page - 1) * orcamentos.per_page) + 1 }} a 
+                    {{ orcamentos.page * orcamentos.per_page if orcamentos.page * orcamentos.per_page <= orcamentos.total else orcamentos.total }} 
+                    de {{ orcamentos.total }} orçamento(s) arquivado(s)
+                    {% if search_cliente or filter_status or filter_tipo %}
+                        <span class="badge badge-info">Filtros aplicados</span>
+                    {% endif %}
+                </small>
+            </div>
             <table class="table table-hover table-sm shadow-sm rounded table-uppercase">
                 <thead class="thead-light">
                     <tr>
+                        <th width="30">
+                            <input type="checkbox" id="select-all-orcamentos-arquivados" onchange="toggleAllOrcamentosArquivados(this)">
+                        </th>
                         <th>N°</th>
                         <th>Cliente</th>
                         <th>Status</th>
@@ -89,8 +206,11 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for entrada in orcamentos %}
+                    {% for entrada in orcamentos.items %}
                     <tr>
+                        <td>
+                            <input type="checkbox" class="orcamento-arquivado-checkbox" value="{{ entrada.id }}" onchange="updateOrcamentosArquivadosBulkActions()">
+                        </td>
                         <td>
                             <button type="button" class="btn btn-outline-secondary btn-sm" style="color: var(--text-color);" data-toggle="modal" data-target="#detalhesModal-{{ entrada.id }}">
                                 {% if entrada.numero_pedido > 1000000000 and entrada.tipo == 'Orçamento' %}
@@ -137,10 +257,115 @@
                         </td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="4" class="text-center">Nenhum orçamento arquivado.</td></tr>
+                    <tr><td colspan="5" class="text-center">Nenhum orçamento arquivado.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+    </div>
+    
+    <!-- Pagination Controls -->
+    <div class="row mt-4">
+        <!-- Paginação para Pedidos -->
+        <div class="col-lg-6">
+            {% if pedidos.pages > 1 %}
+            <nav aria-label="Navegação de pedidos arquivados">
+                <ul class="pagination justify-content-center">
+                    {% if pedidos.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('pedidos_arquivados', pedidos_page=pedidos.prev_num, orcamentos_page=orcamentos.page, search_cliente=search_cliente, filter_status=filter_status, filter_tipo=filter_tipo) }}" aria-label="Anterior">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">&laquo;</span>
+                        </li>
+                    {% endif %}
+                    
+                    {% for page_num in pedidos.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != pedidos.page %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('pedidos_arquivados', pedidos_page=page_num, orcamentos_page=orcamentos.page, search_cliente=search_cliente, filter_status=filter_status, filter_tipo=filter_tipo) }}">{{ page_num }}</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                            {% endif %}
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">…</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if pedidos.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('pedidos_arquivados', pedidos_page=pedidos.next_num, orcamentos_page=orcamentos.page, search_cliente=search_cliente, filter_status=filter_status, filter_tipo=filter_tipo) }}" aria-label="Próximo">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">&raquo;</span>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+        
+        <!-- Paginação para Orçamentos -->
+        <div class="col-lg-6">
+            {% if orcamentos.pages > 1 %}
+            <nav aria-label="Navegação de páginas - Orçamentos">
+                <ul class="pagination justify-content-center pagination-sm">
+                    {% if orcamentos.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('pedidos_arquivados', pedidos_page=pedidos.page, orcamentos_page=orcamentos.prev_num, search_cliente=search_cliente, filter_status=filter_status, filter_tipo=filter_tipo) }}" aria-label="Anterior">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">&laquo;</span>
+                        </li>
+                    {% endif %}
+                    
+                    {% for page_num in orcamentos.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != orcamentos.page %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('pedidos_arquivados', pedidos_page=pedidos.page, orcamentos_page=page_num, search_cliente=search_cliente, filter_status=filter_status, filter_tipo=filter_tipo) }}">{{ page_num }}</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ page_num }}</span>
+                                </li>
+                            {% endif %}
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">…</span>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if orcamentos.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('pedidos_arquivados', pedidos_page=pedidos.page, orcamentos_page=orcamentos.next_num, search_cliente=search_cliente, filter_status=filter_status, filter_tipo=filter_tipo) }}" aria-label="Próximo">
+                                <span aria-hidden="true">&raquo;</span>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">&raquo;</span>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
         </div>
     </div>
 {% endblock %}
@@ -148,7 +373,7 @@
 {% block modals %}
     {# --- MODAL DE DETALHES DO CLIENTE --- #}
     {% set clientes_unicos = [] %}
-    {% for entrada in pedidos + orcamentos %}
+    {% for entrada in pedidos.items + orcamentos.items %}
         {% if entrada.cliente and entrada.cliente not in clientes_unicos %}
             {% do clientes_unicos.append(entrada.cliente) %}
         {% endif %}
@@ -207,7 +432,7 @@
     {% endfor %}
 
     {# --- MODAIS DE DETALHES DA ENTRADA --- #}
-    {% for entrada in pedidos + orcamentos %}
+    {% for entrada in pedidos.items + orcamentos.items %}
     <div class="modal fade" id="detalhesModal-{{ entrada.id }}" tabindex="-1" role="dialog">
         <div class="modal-dialog modal-lg" role="document">
             <div class="modal-content">
@@ -250,4 +475,172 @@
         </div>
     </div>
     {% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Funções para seleção em massa de Pedidos Arquivados
+function toggleAllPedidosArquivados(selectAllCheckbox) {
+    const checkboxes = document.querySelectorAll('.pedido-arquivado-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAllCheckbox.checked;
+    });
+    updatePedidosArquivadosBulkActions();
+}
+
+function updatePedidosArquivadosBulkActions() {
+    const checkboxes = document.querySelectorAll('.pedido-arquivado-checkbox:checked');
+    const bulkActions = document.getElementById('pedidos-arquivados-bulk-actions');
+    const selectedCount = document.getElementById('pedidos-arquivados-selected-count');
+    
+    if (checkboxes.length > 0) {
+        bulkActions.style.display = 'block';
+        selectedCount.textContent = checkboxes.length;
+    } else {
+        bulkActions.style.display = 'none';
+    }
+    
+    // Atualizar estado do "selecionar todos"
+    const allCheckboxes = document.querySelectorAll('.pedido-arquivado-checkbox');
+    const selectAllCheckbox = document.getElementById('select-all-pedidos-arquivados');
+    selectAllCheckbox.checked = allCheckboxes.length > 0 && checkboxes.length === allCheckboxes.length;
+}
+
+function bulkRestorePedidosArquivados() {
+    const checkboxes = document.querySelectorAll('.pedido-arquivado-checkbox:checked');
+    const ids = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (ids.length === 0) {
+        alert('Selecione pelo menos um item para restaurar.');
+        return;
+    }
+    
+    if (confirm(`Deseja restaurar ${ids.length} pedido(s) selecionado(s)?`)) {
+        bulkActionPedidosArquivados('restore', ids);
+    }
+}
+
+function bulkDeletePedidosArquivados() {
+    const checkboxes = document.querySelectorAll('.pedido-arquivado-checkbox:checked');
+    const ids = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (ids.length === 0) {
+        alert('Selecione pelo menos um item para excluir.');
+        return;
+    }
+    
+    if (confirm(`Deseja excluir permanentemente ${ids.length} pedido(s) selecionado(s)? Esta ação não pode ser desfeita.`)) {
+        bulkActionPedidosArquivados('delete', ids);
+    }
+}
+
+// Funções para seleção em massa de Orçamentos Arquivados
+function toggleAllOrcamentosArquivados(selectAllCheckbox) {
+    const checkboxes = document.querySelectorAll('.orcamento-arquivado-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAllCheckbox.checked;
+    });
+    updateOrcamentosArquivadosBulkActions();
+}
+
+function updateOrcamentosArquivadosBulkActions() {
+    const checkboxes = document.querySelectorAll('.orcamento-arquivado-checkbox:checked');
+    const bulkActions = document.getElementById('orcamentos-arquivados-bulk-actions');
+    const selectedCount = document.getElementById('orcamentos-arquivados-selected-count');
+    
+    if (checkboxes.length > 0) {
+        bulkActions.style.display = 'block';
+        selectedCount.textContent = checkboxes.length;
+    } else {
+        bulkActions.style.display = 'none';
+    }
+    
+    // Atualizar estado do "selecionar todos"
+    const allCheckboxes = document.querySelectorAll('.orcamento-arquivado-checkbox');
+    const selectAllCheckbox = document.getElementById('select-all-orcamentos-arquivados');
+    selectAllCheckbox.checked = allCheckboxes.length > 0 && checkboxes.length === allCheckboxes.length;
+}
+
+function bulkRestoreOrcamentosArquivados() {
+    const checkboxes = document.querySelectorAll('.orcamento-arquivado-checkbox:checked');
+    const ids = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (ids.length === 0) {
+        alert('Selecione pelo menos um item para restaurar.');
+        return;
+    }
+    
+    if (confirm(`Deseja restaurar ${ids.length} orçamento(s) selecionado(s)?`)) {
+        bulkActionOrcamentosArquivados('restore', ids);
+    }
+}
+
+function bulkDeleteOrcamentosArquivados() {
+    const checkboxes = document.querySelectorAll('.orcamento-arquivado-checkbox:checked');
+    const ids = Array.from(checkboxes).map(cb => cb.value);
+    
+    if (ids.length === 0) {
+        alert('Selecione pelo menos um item para excluir.');
+        return;
+    }
+    
+    if (confirm(`Deseja excluir permanentemente ${ids.length} orçamento(s) selecionado(s)? Esta ação não pode ser desfeita.`)) {
+        bulkActionOrcamentosArquivados('delete', ids);
+    }
+}
+
+// Função para executar ações em lote para pedidos arquivados
+function bulkActionPedidosArquivados(action, ids) {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/bulk-action-archived', true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+                const response = JSON.parse(xhr.responseText);
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert('Erro: ' + response.message);
+                }
+            } else {
+                alert('Erro ao processar a solicitação.');
+            }
+        }
+    };
+    
+    xhr.send(JSON.stringify({
+        action: action,
+        ids: ids
+    }));
+}
+
+// Função para executar ações em lote para orçamentos arquivados
+function bulkActionOrcamentosArquivados(action, ids) {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/bulk-action-archived', true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+                const response = JSON.parse(xhr.responseText);
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert('Erro: ' + response.message);
+                }
+            } else {
+                alert('Erro ao processar a solicitação.');
+            }
+        }
+    };
+    
+    xhr.send(JSON.stringify({
+        action: action,
+        ids: ids
+    }));
+}
+</script>
 {% endblock %}
