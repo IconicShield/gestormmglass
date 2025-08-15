@@ -292,6 +292,94 @@ window.PainelSistema = (function() {
             });
         },
         
+        // Inicialização do sistema de status
+        _initializeStatusSystem: function() {
+            try {
+                logger.info('Inicializando sistema de status...');
+                
+                // Configura intervalos de atualização de status se necessário
+                if (!state.statusInterval && CONFIG.statusUpdateInterval > 0) {
+                    state.statusInterval = setInterval(() => {
+                        connectionManager.updateStatus(state.connectionStatus);
+                    }, CONFIG.statusUpdateInterval);
+                }
+                
+                logger.info('Sistema de status inicializado');
+            } catch (error) {
+                logger.error('Erro ao inicializar sistema de status:', error);
+                throw error;
+            }
+        },
+        
+        // Inicialização da atualização automática
+        _initializeAutoUpdate: function() {
+            try {
+                logger.info('Inicializando atualização automática...');
+                
+                // Configura atualização automática se habilitada
+                if (CONFIG.autoUpdateEnabled && CONFIG.updateInterval > 0) {
+                    if (state.autoUpdateInterval) {
+                        clearInterval(state.autoUpdateInterval);
+                    }
+                    
+                    state.autoUpdateInterval = setInterval(() => {
+                        if (typeof updateTables === 'function') {
+                            updateTables();
+                        }
+                    }, CONFIG.updateInterval);
+                    
+                    state.updateInterval = CONFIG.updateInterval;
+                }
+                
+                logger.info('Atualização automática inicializada');
+            } catch (error) {
+                logger.error('Erro ao inicializar atualização automática:', error);
+                throw error;
+            }
+        },
+        
+        // Proteção de modais
+        _protectModals: function() {
+            try {
+                logger.info('Aplicando proteção de modais...');
+                
+                // Aplica proteção se a função global existir
+                if (typeof protectModals === 'function') {
+                    protectModals();
+                }
+                
+                // Restaura conteúdo de anexos se necessário
+                if (typeof restoreAnexosContent === 'function') {
+                    restoreAnexosContent();
+                }
+                
+                logger.info('Proteção de modais aplicada');
+            } catch (error) {
+                logger.error('Erro ao aplicar proteção de modais:', error);
+                throw error;
+            }
+        },
+        
+        // Configuração de event listeners
+        _setupEventListeners: function() {
+            try {
+                logger.info('Configurando event listeners...');
+                
+                // Remove listeners anteriores para evitar duplicação
+                document.querySelectorAll('[data-listener-attached]').forEach(element => {
+                    element.removeAttribute('data-listener-attached');
+                });
+                
+                // Configura listeners específicos do sistema se necessário
+                // Aqui podem ser adicionados listeners específicos do painel
+                
+                logger.info('Event listeners configurados');
+            } catch (error) {
+                logger.error('Erro ao configurar event listeners:', error);
+                throw error;
+            }
+        },
+        
         // Destruição segura do sistema
         destroy: function() {
             try {

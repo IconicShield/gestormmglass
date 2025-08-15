@@ -191,7 +191,7 @@ th:first-child {
     }
 }
 #pedidos-table th:nth-child(2), #orcamentos-table th:nth-child(2) { width: 8%; }   /* Data */
-#pedidos-table th:nth-child(3), #orcamentos-table th:nth-child(3) { width: 6%; }  /* N° Pedido */
+#pedidos-table th:nth-child(3), #orcamentos-table th:nth-child(3) { width: 8%; }  /* N° Pedido */
 #pedidos-table th:nth-child(4), #orcamentos-table th:nth-child(4) { width: 6%; }  /* N° Cliente */
 #pedidos-table th:nth-child(5), #orcamentos-table th:nth-child(5) { width: 18%; }  /* Cliente */
 #pedidos-table th:nth-child(6), #orcamentos-table th:nth-child(6) { width: 12%; }  /* Obra */
@@ -641,7 +641,7 @@ td:last-child {
                 <td>{{ entrada.data_registro.strftime('%d/%m/%Y') }}</td>
                 <td>
                     <button type="button" class="btn btn-outline-secondary btn-sm" style="color: var(--text-color);" data-toggle="modal" data-target="#detalhesModal-{{ entrada.id }}">
-                        {{ entrada.numero_pedido }}
+                        {% if entrada.numero_pedido > 1000000 %}<i class="fas fa-search"></i> Detalhes{% else %}{{ entrada.numero_pedido }}{% endif %}
                     </button>
                 </td>
                 <td>
@@ -771,7 +771,7 @@ td:last-child {
                     <input type="checkbox" class="orcamento-checkbox" value="{{ entrada.id }}" onchange="updateOrcamentosBulkActions()">
                 </td>
                 <td>{{ entrada.data_registro.strftime('%d/%m/%Y') }}</td>
-                <td><button type="button" class="btn btn-outline-secondary btn-sm" style="color: var(--text-color);" data-toggle="modal" data-target="#detalhesModal-{{ entrada.id }}">{% if entrada.numero_pedido > 1000000000 %}<i class="fas fa-search"></i> Detalhes{% else %}{{ entrada.numero_pedido }}{% endif %}</button></td>
+                <td><button type="button" class="btn btn-outline-secondary btn-sm" style="color: var(--text-color);" data-toggle="modal" data-target="#detalhesModal-{{ entrada.id }}">{% if entrada.numero_pedido > 1000000 %}<i class="fas fa-search"></i> Detalhes{% else %}{{ entrada.numero_pedido }}{% endif %}</button></td>
                 <td>
                     {% if entrada.cliente %}
                         <button type="button" class="btn btn-outline-secondary btn-sm" style="color: var(--text-color);" data-toggle="modal" data-target="#clienteDetalhesModal-{{ entrada.cliente.id }}">
@@ -1409,6 +1409,7 @@ td:last-child {
     // Função para atualizar tabelas - Versão revisada e otimizada
     function updateTables(tablesData) {
         try {
+            console.log('DEBUG: updateTables chamada com dados:', tablesData);
             // Validação de entrada
             if (!tablesData || typeof tablesData !== 'object') {
                 console.warn('Dados de tabelas inválidos recebidos:', tablesData);
@@ -1446,6 +1447,7 @@ td:last-child {
     // Função para atualizar tabela de pedidos - Versão revisada e otimizada
     function updatePedidosTable(pedidosData) {
         try {
+            console.log('DEBUG: updatePedidosTable executada com', pedidosData?.length || 0, 'pedidos:', pedidosData);
             // Validação de entrada
             if (!Array.isArray(pedidosData)) {
                 console.error('Dados de pedidos inválidos:', pedidosData);
@@ -1490,10 +1492,8 @@ td:last-child {
                         // Data
                         sanitize(pedido.data_cadastro || ''),
                         
-                        // Número do pedido
-                        `<button type="button" class="btn btn-outline-secondary btn-sm" style="color: var(--text-color);" data-toggle="modal" data-target="#detalhesModal-${sanitize(pedido.id)}">
-                            ${sanitize(pedido.numero_pedido || '')}
-                        </button>`,
+                        // Número do pedido - será tratado especialmente no forEach
+                        '',
                         
                         // Cliente
                         pedido.numero_cliente ? 
@@ -1562,9 +1562,35 @@ td:last-child {
                     ];
                     
                     // Cria as células
-                    cellsHTML.forEach(cellHTML => {
+                    cellsHTML.forEach((cellHTML, index) => {
                         const cell = document.createElement('td');
+                        
+                        // Tratamento especial para o botão de detalhes (índice 2)
+                    if (index === 2) {
+                        const button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'btn btn-outline-secondary btn-sm';
+                        button.style.color = 'var(--text-color)';
+                        button.setAttribute('data-toggle', 'modal');
+                        button.setAttribute('data-target', `#detalhesModal-${pedido.id}`);
+                        
+                        // Lógica corrigida para pedidos
+                         if (pedido.numero_pedido && pedido.numero_pedido > 1000000) {
+                             const icon = document.createElement('i');
+                             icon.className = 'fas fa-search';
+                             icon.style.marginRight = '5px';
+                             button.appendChild(icon);
+                             button.appendChild(document.createTextNode('Detalhes'));
+                         } else {
+                             button.textContent = pedido.numero_pedido || 'Detalhes';
+                         }
+                        
+                        cell.appendChild(button);
+                        createDetalhesModal(pedido);
+                    } else {
                         cell.innerHTML = cellHTML;
+                    }
+                        
                         row.appendChild(cell);
                     });
                     
@@ -1653,7 +1679,8 @@ td:last-child {
                 const cellsHTML = [
                     `<input type="checkbox" class="orcamento-checkbox" value="${sanitize(orcamento.id)}" onchange="updateOrcamentosBulkActions()">`,
                     sanitize(orcamento.data_cadastro || ''),
-                    `<button type="button" class="btn btn-outline-secondary btn-sm" style="color: var(--text-color);" data-toggle="modal" data-target="#detalhesModal-${sanitize(orcamento.id)}">${sanitize(orcamento.numero_orcamento || '')}</button>`,
+                    // Número do pedido - será tratado especialmente no forEach
+                     '',
                     orcamento.numero_cliente ? 
                         `<button type="button" class="btn btn-outline-secondary btn-sm" style="color: var(--text-color);" data-toggle="modal" data-target="#clienteDetalhesModal-${sanitize(orcamento.cliente_id)}">${sanitize(orcamento.numero_cliente)}</button>` :
                         `<a href="/novo_cliente/rapido?nome=${encodeURIComponent(orcamento.nome_cliente || '')}" class="btn btn-success btn-sm" title="Cadastrar este cliente"><i class="fas fa-plus"></i></a>`,
@@ -1694,9 +1721,35 @@ td:last-child {
                 ];
                 
                 // Adiciona as células à linha
-                cellsHTML.forEach(cellHTML => {
+                cellsHTML.forEach((cellHTML, index) => {
                     const cell = document.createElement('td');
-                    cell.innerHTML = cellHTML;
+                    
+                    // Tratamento especial para o botão de detalhes (índice 2)
+                     if (index === 2) {
+                         const button = document.createElement('button');
+                         button.type = 'button';
+                         button.className = 'btn btn-outline-secondary btn-sm';
+                         button.style.color = 'var(--text-color)';
+                         button.setAttribute('data-toggle', 'modal');
+                         button.setAttribute('data-target', `#detalhesModal-${orcamento.id}`);
+                         
+                         // Lógica corrigida para orçamentos
+                          if (orcamento.numero_pedido && orcamento.numero_pedido <= 1000000) {
+                              button.textContent = orcamento.numero_pedido;
+                          } else {
+                              const icon = document.createElement('i');
+                              icon.className = 'fas fa-search';
+                              icon.style.marginRight = '5px';
+                              button.appendChild(icon);
+                              button.appendChild(document.createTextNode('Detalhes'));
+                          }
+                         
+                         cell.appendChild(button);
+                         createDetalhesModal(orcamento);
+                     } else {
+                         cell.innerHTML = cellHTML;
+                     }
+                    
                     row.appendChild(cell);
                 });
                 
@@ -1754,6 +1807,74 @@ td:last-child {
             'Cancelado': 'bg-danger'
         };
         return statusColors[status] || 'bg-secondary';
+    }
+    
+    // Função para criar modal de detalhes dinamicamente
+    function createDetalhesModal(entrada) {
+        // Verifica se o modal já existe
+        if (document.getElementById(`detalhesModal-${entrada.id}`)) {
+            return;
+        }
+        
+        // Formata a data
+        const dataRegistro = entrada.data_registro ? new Date(entrada.data_registro).toLocaleString('pt-BR') : 'N/A';
+        
+        // Determina a cor do status
+        let statusColor = 'secondary';
+        if (entrada.status === 'Concluído') statusColor = 'success';
+        else if (entrada.status === 'Em andamento') statusColor = 'warning';
+        else if (entrada.status === 'Não iniciado') statusColor = 'danger';
+        
+        // Cria o HTML do modal
+        const modalHTML = `
+            <div class="modal fade" id="detalhesModal-${entrada.id}" tabindex="-1" role="dialog" aria-labelledby="detalhesModalLabel-${entrada.id}" aria-hidden="true">
+                <div class="modal-dialog modal-lg" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="detalhesModalLabel-${entrada.id}">Detalhes do ${entrada.tipo || 'Registro'} #${entrada.numero_pedido}</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-info-circle text-primary"></i> Informações Gerais</h6><hr class="mt-1">
+                                    <dl class="row">
+                                        <dt class="col-sm-5">N° da Entrada</dt><dd class="col-sm-7">${entrada.numero_pedido}</dd>
+                                        <dt class="col-sm-5">Tipo</dt><dd class="col-sm-7">${entrada.tipo || 'N/A'}</dd>
+                                        <dt class="col-sm-5">Data de Registo</dt><dd class="col-sm-7">${dataRegistro}</dd>
+                                        <dt class="col-sm-5">Cliente</dt><dd class="col-sm-7 text-uppercase">${entrada.nome_cliente || entrada.cliente_nome_temp || 'N/A'}</dd>
+                                        <dt class="col-sm-5">Status</dt><dd class="col-sm-7"><span class="badge badge-${statusColor}">${entrada.status || 'N/A'}</span></dd>
+                                    </dl>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6><i class="fas fa-hard-hat text-primary"></i> Obra</h6><hr class="mt-1">
+                                    <p class="text-uppercase">${entrada.obra || entrada.trabalho || 'Não especificada'}</p>
+
+                                    <h6 class="mt-4"><i class="fas fa-paperclip text-primary"></i> Anexos</h6><hr class="mt-1">
+                                    <p class="text-muted small">Total de ${entrada.anexos_count || 0} anexo(s).</p>
+                                    <a href="/editar/${entrada.id}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-plus"></i> Gerir Anexos</a>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <h6><i class="fas fa-align-left text-primary"></i> Descrição</h6><hr class="mt-1">
+                                    <p class="text-uppercase" style="white-space: pre-wrap;">${entrada.descricao || ''}</p>
+                                    <h6 class="mt-3"><i class="fas fa-comment-alt text-primary"></i> Observações</h6><hr class="mt-1">
+                                    <p class="text-uppercase" style="white-space: pre-wrap;">${entrada.observacoes || 'Nenhuma observação.'}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <a href="/editar/${entrada.id}" class="btn btn-info"><i class="fas fa-edit"></i> Editar</a>
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Fechar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Adiciona o modal ao DOM
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
     }
     
     // Sistema de Drag and Drop para Anexos
@@ -2494,18 +2615,12 @@ td:last-child {
     function convertToPedido(id) {
         if (confirm('Tem certeza que deseja converter este orçamento em pedido?')) {
             const xhr = new XMLHttpRequest();
-            xhr.open('POST', '/convert-to-pedido', true);
-            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.open('POST', '/converter/' + id, true);
             
             xhr.onload = function() {
                 if (xhr.status >= 200 && xhr.status < 300) {
-                    const data = JSON.parse(xhr.responseText);
-                    if (data.success) {
-                        alert('Orçamento convertido em pedido com sucesso!');
-                        location.reload();
-                    } else {
-                        alert('Erro: ' + (data.message || 'Ocorreu um erro desconhecido.'));
-                    }
+                    alert('Orçamento convertido em pedido com sucesso!');
+                    location.reload();
                 } else {
                     alert('Erro de comunicação com o servidor.');
                 }
@@ -2515,9 +2630,7 @@ td:last-child {
                 alert('Erro de comunicação com o servidor.');
             };
             
-            xhr.send(JSON.stringify({
-                id: id
-            }));
+            xhr.send();
         }
     }
     

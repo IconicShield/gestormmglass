@@ -42,34 +42,49 @@
                 <label for="obra">Obra</label>
                 <input type="text" name="obra" class="form-control" value="{{ entrada.obra or '' }}">
             </div>
-            <div class="form-group">
-                <label for="descricao">Descrição (*)</label>
-                <textarea class="form-control" id="descricao" name="descricao" rows="3" required>{{ entrada.descricao or '' }}</textarea>
-            </div>
-            <div class="form-group">
-                <label for="observacoes">Observações</label>
-                <textarea class="form-control" id="observacoes" name="observacoes" rows="3">{{ entrada.observacoes or '' }}</textarea>
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="descricao">Descrição (*)</label>
+                    <textarea class="form-control" id="descricao" name="descricao" rows="3" required>{{ entrada.descricao or '' }}</textarea>
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="observacoes">Observações</label>
+                    <textarea class="form-control" id="observacoes" name="observacoes" rows="3">{{ entrada.observacoes or '' }}</textarea>
+                </div>
             </div>
 
             <h5 class="mt-4">Anexos</h5><hr>
             {% if entrada.anexos %}
-                <ul class="list-group mb-3">
+                <div class="file-list mb-3">
                 {% for anexo in entrada.anexos %}
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <a href="{{ url_for('uploaded_file', filename=anexo.filename) }}" target="_blank">{{ anexo.filename }}</a>
-                        <a href="{{ url_for('excluir_anexo', anexo_id=anexo.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Tem a certeza que deseja excluir este anexo?');">&times;</a>
-                    </li>
+                    <div class="file-item existing-file">
+                        <div class="file-icon">
+                            <i class="fas fa-file"></i>
+                        </div>
+                        <div class="file-info">
+                            <div class="file-name">{{ anexo.filename }}</div>
+                            <div class="file-size">Arquivo existente</div>
+                        </div>
+                        <div class="file-actions">
+                            <a href="{{ url_for('uploaded_file', filename=anexo.filename) }}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i></a>
+                            <a href="{{ url_for('excluir_anexo', anexo_id=anexo.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Tem a certeza que deseja excluir este anexo?');"><i class="fas fa-trash"></i></a>
+                        </div>
+                    </div>
                 {% endfor %}
-                </ul>
+                </div>
             {% else %}
                 <p class="text-muted">Nenhum anexo existente.</p>
             {% endif %}
 
             <div class="form-group">
                 <label for="anexos">Adicionar novos anexos</label>
-                <div class="custom-file">
-                    <input type="file" class="custom-file-input" id="anexos" name="anexos" multiple>
-                    <label class="custom-file-label" for="anexos">Escolher ficheiros...</label>
+                <div class="file-upload-area" id="fileUploadArea">
+                    <div class="upload-placeholder">
+                        <i class="fas fa-cloud-upload-alt fa-3x mb-3"></i>
+                        <p>Arraste e solte arquivos aqui ou clique para selecionar</p>
+                        <input type="file" class="file-input" id="anexos" name="anexos" multiple>
+                    </div>
+                    <div class="file-list" id="fileList"></div>
                 </div>
             </div>
             <button type="submit" class="btn btn-primary mt-3">Salvar Alterações</button>
@@ -142,6 +157,100 @@
         background-color: var(--bg-primary) !important;
         color: var(--text-primary) !important;
     }
+    
+    /* Estilos para upload de arquivos */
+    .file-upload-area {
+        border: 2px dashed var(--border-color);
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        transition: all 0.3s ease;
+        background-color: var(--bg-secondary);
+    }
+    
+    .file-upload-area:hover {
+        border-color: var(--hover-border);
+        background-color: var(--hover-bg);
+    }
+    
+    .file-upload-area.dragover {
+        border-color: var(--hover-border);
+        background-color: var(--hover-bg);
+        transform: scale(1.02);
+    }
+    
+    .upload-placeholder {
+        color: var(--text-secondary);
+        cursor: pointer;
+    }
+    
+    .file-input {
+        display: none;
+    }
+    
+    .file-list {
+        margin-top: 15px;
+    }
+    
+    .file-item {
+        display: flex;
+        align-items: center;
+        padding: 10px;
+        margin-bottom: 8px;
+        background-color: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 6px;
+        transition: all 0.2s ease;
+    }
+    
+    .file-item:hover {
+        background-color: var(--hover-bg);
+        border-color: var(--hover-border);
+    }
+    
+    .file-icon {
+        margin-right: 12px;
+        font-size: 24px;
+        color: var(--text-secondary);
+        min-width: 30px;
+    }
+    
+    .file-info {
+        flex: 1;
+        text-align: left;
+    }
+    
+    .file-name {
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-bottom: 2px;
+    }
+    
+    .file-size {
+        font-size: 0.85em;
+        color: var(--text-secondary);
+    }
+    
+    .file-actions {
+        display: flex;
+        gap: 5px;
+    }
+    
+    .file-actions .btn {
+        padding: 4px 8px;
+        font-size: 0.8em;
+    }
+    
+    .existing-file {
+        background-color: var(--bg-secondary);
+    }
+    
+    /* Ícones específicos por tipo de arquivo */
+    .file-icon.pdf { color: #dc3545; }
+    .file-icon.doc, .file-icon.docx { color: #0d6efd; }
+    .file-icon.xls, .file-icon.xlsx { color: #198754; }
+    .file-icon.jpg, .file-icon.jpeg, .file-icon.png, .file-icon.gif { color: #fd7e14; }
+    .file-icon.zip, .file-icon.rar { color: #6f42c1; }
 </style>
 
 {% endblock %}
@@ -164,6 +273,147 @@ $(function() {
             }
         }
     });
+});
+
+// FUNCIONALIDADE DE DRAG AND DROP PARA ARQUIVOS
+document.addEventListener('DOMContentLoaded', function() {
+    const fileUploadArea = document.getElementById('fileUploadArea');
+    const fileInput = document.getElementById('anexos');
+    const fileList = document.getElementById('fileList');
+    const uploadPlaceholder = fileUploadArea.querySelector('.upload-placeholder');
+    
+    let selectedFiles = [];
+    
+    // Detectar tema atual
+    function getCurrentTheme() {
+        return document.documentElement.getAttribute('data-theme') || 'dark';
+    }
+    
+    // Clique na área de upload
+    uploadPlaceholder.addEventListener('click', function() {
+        fileInput.click();
+    });
+    
+    // Seleção de arquivos via input
+    fileInput.addEventListener('change', function(e) {
+        handleFiles(e.target.files);
+    });
+    
+    // Drag and drop events
+    fileUploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        fileUploadArea.classList.add('dragover');
+    });
+    
+    fileUploadArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        if (!fileUploadArea.contains(e.relatedTarget)) {
+            fileUploadArea.classList.remove('dragover');
+        }
+    });
+    
+    fileUploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        fileUploadArea.classList.remove('dragover');
+        handleFiles(e.dataTransfer.files);
+    });
+    
+    function handleFiles(files) {
+        for (let file of files) {
+            if (!selectedFiles.some(f => f.name === file.name && f.size === file.size)) {
+                selectedFiles.push(file);
+            }
+        }
+        updateFileList();
+        updateFileInput();
+    }
+    
+    function removeFile(index) {
+        selectedFiles.splice(index, 1);
+        updateFileList();
+        updateFileInput();
+    }
+    
+    function updateFileList() {
+        fileList.innerHTML = '';
+        
+        selectedFiles.forEach((file, index) => {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            
+            const fileIcon = getFileIcon(file.name);
+            const fileSize = formatFileSize(file.size);
+            
+            fileItem.innerHTML = `
+                <div class="file-icon ${getFileExtension(file.name)}">
+                    <i class="${fileIcon}"></i>
+                </div>
+                <div class="file-info">
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-size">${fileSize}</div>
+                </div>
+                <div class="file-actions">
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFileFromList(${index})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `;
+            
+            fileList.appendChild(fileItem);
+        });
+        
+        // Mostrar/ocultar placeholder
+        if (selectedFiles.length > 0) {
+            uploadPlaceholder.style.display = 'none';
+        } else {
+            uploadPlaceholder.style.display = 'block';
+        }
+    }
+    
+    function updateFileInput() {
+        const dt = new DataTransfer();
+        selectedFiles.forEach(file => dt.items.add(file));
+        fileInput.files = dt.files;
+    }
+    
+    function getFileIcon(filename) {
+        const ext = getFileExtension(filename);
+        const iconMap = {
+            'pdf': 'fas fa-file-pdf',
+            'doc': 'fas fa-file-word',
+            'docx': 'fas fa-file-word',
+            'xls': 'fas fa-file-excel',
+            'xlsx': 'fas fa-file-excel',
+            'ppt': 'fas fa-file-powerpoint',
+            'pptx': 'fas fa-file-powerpoint',
+            'jpg': 'fas fa-file-image',
+            'jpeg': 'fas fa-file-image',
+            'png': 'fas fa-file-image',
+            'gif': 'fas fa-file-image',
+            'zip': 'fas fa-file-archive',
+            'rar': 'fas fa-file-archive',
+            'txt': 'fas fa-file-alt',
+            'csv': 'fas fa-file-csv'
+        };
+        return iconMap[ext] || 'fas fa-file';
+    }
+    
+    function getFileExtension(filename) {
+        return filename.split('.').pop().toLowerCase();
+    }
+    
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+    
+    // Função global para remover arquivo
+    window.removeFileFromList = function(index) {
+        removeFile(index);
+    };
 });
 </script>
 {% endblock %}
