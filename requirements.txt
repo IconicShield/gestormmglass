@@ -29,4 +29,3 @@ gunicorn==21.2.0
 PyMuPDF==1.24.1
 openpyxl==3.1.2
 python-dotenv==1.0.1
-jinja2-do==0.1.0
