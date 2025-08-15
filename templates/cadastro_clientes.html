@@ -352,4 +352,120 @@ function bulkActionClientes(action, ids) {
     }));
 }
 </script>
+
+<style>
+    :root {
+        --bg-primary: #2d3748;
+        --bg-secondary: #2d3748;
+        --border-color: #4a5568;
+        --text-primary: #e2e8f0;
+        --text-secondary: #a0aec0;
+        --hover-bg: #1a365d;
+        --hover-border: #4299e1;
+        --input-bg: #2d3748;
+        --input-border: #4a5568;
+        --input-text: #e2e8f0;
+    }
+    
+    [data-theme="light"] {
+        --bg-primary: #ffffff;
+        --bg-secondary: #f8f9fa;
+        --border-color: #dee2e6;
+        --text-primary: #212529;
+        --text-secondary: #6c757d;
+        --hover-bg: #e3f2fd;
+        --hover-border: #007bff;
+        --input-bg: #ffffff;
+        --input-border: #ced4da;
+        --input-text: #495057;
+    }
+    
+    /* Estilos para campos de formulário */
+    .form-control {
+        background-color: var(--input-bg) !important;
+        border-color: var(--input-border) !important;
+        color: var(--input-text) !important;
+    }
+    
+    .form-control:focus {
+        background-color: var(--input-bg) !important;
+        border-color: var(--hover-border) !important;
+        color: var(--input-text) !important;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+    }
+    
+    [data-theme="light"] .form-control:focus {
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+    }
+    
+    .form-control::placeholder {
+        color: var(--text-secondary) !important;
+    }
+    
+    /* Labels */
+    label {
+        color: var(--text-primary) !important;
+    }
+    
+    /* Cards */
+    .card {
+        background-color: var(--bg-primary) !important;
+        border-color: var(--border-color) !important;
+    }
+    
+    .card-header {
+        background-color: var(--bg-secondary) !important;
+        border-color: var(--border-color) !important;
+        color: var(--text-primary) !important;
+    }
+    
+    .card-body {
+        background-color: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
+    }
+    
+    /* Tabelas */
+    .table {
+        color: var(--text-primary) !important;
+    }
+    
+    .table th {
+        background-color: var(--bg-secondary) !important;
+        border-color: var(--border-color) !important;
+        color: var(--text-primary) !important;
+    }
+    
+    .table td {
+        background-color: var(--bg-primary) !important;
+        border-color: var(--border-color) !important;
+        color: var(--text-primary) !important;
+    }
+    
+    .table-striped tbody tr:nth-of-type(odd) {
+        background-color: var(--bg-secondary) !important;
+    }
+    
+    /* Modal */
+    .modal-content {
+        background-color: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
+    }
+    
+    .modal-header {
+        background-color: var(--bg-secondary) !important;
+        border-color: var(--border-color) !important;
+        color: var(--text-primary) !important;
+    }
+    
+    .modal-body {
+        background-color: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
+    }
+    
+    .modal-footer {
+        background-color: var(--bg-secondary) !important;
+        border-color: var(--border-color) !important;
+    }
+</style>
+
 {% endblock %}

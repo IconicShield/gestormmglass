@@ -40,20 +40,25 @@
                 <label for="obra">Obra</label>
                 <input type="text" name="obra" class="form-control" value="{{ form_data.obra or '' }}">
             </div>
-            <div class="form-group">
-                <label for="descricao">Descrição (*)</label>
-                <textarea class="form-control" id="descricao" name="descricao" rows="3" required>{{ form_data.descricao or '' }}</textarea>
-            </div>
-            <div class="form-group">
-                <label for="observacoes">Observações</label>
-                <textarea class="form-control" id="observacoes" name="observacoes" rows="3">{{ form_data.observacoes or '' }}</textarea>
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="descricao">Descrição (*)</label>
+                    <textarea class="form-control" id="descricao" name="descricao" rows="3" required>{{ form_data.descricao or '' }}</textarea>
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="observacoes">Observações</label>
+                    <textarea class="form-control" id="observacoes" name="observacoes" rows="3">{{ form_data.observacoes or '' }}</textarea>
+                </div>
             </div>
             <div class="form-group">
                 <label for="anexos">Anexos</label>
-                <div class="custom-file">
-                    <input type="file" class="custom-file-input" id="anexos" name="anexos" multiple>
-                    <label class="custom-file-label" for="anexos">Escolher ficheiros...</label>
+                <div id="drop-zone" class="border border-dashed p-4 text-center" style="min-height: 150px; border-color: var(--border-color); border-radius: 8px; background-color: var(--bg-primary); cursor: pointer; transition: all 0.3s ease; color: var(--text-primary);">
+                    <i class="fas fa-cloud-upload-alt fa-3x mb-3" style="color: var(--text-secondary);"></i>
+                    <p class="mb-2" style="color: var(--text-primary);">Arraste e solte os arquivos aqui ou clique para selecionar</p>
+                    <p class="small" style="color: var(--text-secondary);">Suporta múltiplos arquivos</p>
+                    <input type="file" id="anexos" name="anexos" multiple style="display: none;">
                 </div>
+                <div id="file-list" class="mt-3"></div>
             </div>
             <button type="submit" class="btn btn-primary mt-3">Salvar Entrada</button>
         </form>
@@ -62,6 +67,118 @@
 {% endblock %}
 
 {% block scripts %}
+<style>
+         /* Detecta se o tema é escuro ou claro */
+         :root {
+             --bg-primary: #2d3748;
+             --bg-secondary: #2d3748;
+             --border-color: #4a5568;
+             --text-primary: #e2e8f0;
+             --text-secondary: #a0aec0;
+             --hover-bg: #1a365d;
+             --hover-border: #4299e1;
+         }
+         
+         :root {
+               --bg-primary: #2d3748;
+               --bg-secondary: #2d3748;
+               --border-color: #4a5568;
+               --text-primary: #e2e8f0;
+               --text-secondary: #a0aec0;
+               --hover-bg: #1a365d;
+               --hover-border: #4299e1;
+               --input-bg: #2d3748;
+               --input-border: #4a5568;
+               --input-text: #e2e8f0;
+           }
+           
+           [data-theme="light"] {
+               --bg-primary: #ffffff;
+               --bg-secondary: #f8f9fa;
+               --border-color: #dee2e6;
+               --text-primary: #212529;
+               --text-secondary: #6c757d;
+               --hover-bg: #e3f2fd;
+               --hover-border: #007bff;
+               --input-bg: #ffffff;
+               --input-border: #ced4da;
+               --input-text: #495057;
+           }
+         
+         .file-item {
+             display: flex;
+             align-items: center;
+             justify-content: space-between;
+             padding: 6px 10px;
+             margin: 3px 0;
+             background-color: var(--bg-secondary);
+             border: 1px solid var(--border-color);
+             border-radius: 5px;
+             color: var(--text-primary);
+         }
+        .file-info {
+            display: flex;
+            align-items: center;
+            flex-grow: 1;
+            font-size: 14px;
+        }
+        .file-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            font-size: 16px;
+        }
+        .file-size {
+             color: var(--text-secondary);
+             font-size: 11px;
+             margin-left: 8px;
+         }
+        .remove-file {
+            background-color: #e53e3e;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 3px 6px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: background-color 0.2s;
+        }
+        .remove-file:hover {
+            background-color: #c53030;
+        }
+        .files-count {
+              color: var(--text-secondary);
+              font-size: 13px;
+              margin-top: 8px;
+          }
+          
+          /* Estilos para campos de formulário */
+          .form-control {
+              background-color: var(--input-bg) !important;
+              border-color: var(--input-border) !important;
+              color: var(--input-text) !important;
+          }
+          
+          .form-control:focus {
+              background-color: var(--input-bg) !important;
+              border-color: var(--hover-border) !important;
+              color: var(--input-text) !important;
+              box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+          }
+          
+          [data-theme="light"] .form-control:focus {
+              box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+          }
+          
+          .form-control::placeholder {
+              color: var(--text-secondary) !important;
+          }
+          
+          /* Labels */
+          label {
+              color: var(--text-primary) !important;
+          }
+</style>
 <script>
 // --- SCRIPT DO AUTOCOMPLETE DE CLIENTE ---
 $(function() {
@@ -81,6 +198,209 @@ $(function() {
             }
         }
     });
+});
+
+// --- SCRIPT DO DRAG AND DROP DE ANEXOS ---
+let selectedFiles = [];
+
+// Função para detectar tema
+function getThemeColors() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    if (currentTheme === 'light') {
+        return {
+            bgPrimary: '#ffffff',
+            bgSecondary: '#ffffff',
+            borderColor: '#dee2e6',
+            textPrimary: '#212529',
+            textSecondary: '#6c757d',
+            hoverBg: '#e3f2fd',
+            hoverBorder: '#007bff'
+        };
+    } else {
+        return {
+            bgPrimary: '#2d3748',
+            bgSecondary: '#2d3748',
+            borderColor: '#4a5568',
+            textPrimary: '#e2e8f0',
+            textSecondary: '#a0aec0',
+            hoverBg: '#1a365d',
+            hoverBorder: '#4299e1'
+        };
+    }
+}
+
+$(document).ready(function() {
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('anexos');
+    const fileList = document.getElementById('file-list');
+    let colors = getThemeColors();
+    
+    // Observer para detectar mudanças de tema
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+                colors = getThemeColors();
+                // Atualiza as cores do drop-zone
+                dropZone.style.borderColor = colors.borderColor;
+                dropZone.style.backgroundColor = colors.bgPrimary;
+                // Re-renderiza a lista de arquivos se existir
+                if (selectedFiles.length > 0) {
+                    updateFileList();
+                }
+            }
+        });
+    });
+    
+    // Observa mudanças no atributo data-theme do elemento html
+    observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-theme']
+    });
+
+    // Clique na zona de drop abre o seletor de arquivos
+    dropZone.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    // Eventos de drag and drop
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = colors.hoverBorder;
+        dropZone.style.backgroundColor = colors.hoverBg;
+    });
+
+    dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = colors.borderColor;
+        dropZone.style.backgroundColor = colors.bgPrimary;
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.style.borderColor = colors.borderColor;
+        dropZone.style.backgroundColor = colors.bgPrimary;
+        
+        const files = Array.from(e.dataTransfer.files);
+        addFiles(files);
+    });
+
+    // Seleção de arquivos via input
+    fileInput.addEventListener('change', (e) => {
+        const files = Array.from(e.target.files);
+        addFiles(files);
+    });
+
+    function addFiles(files) {
+        files.forEach(file => {
+            // Verifica se o arquivo já foi adicionado
+            if (!selectedFiles.some(f => f.name === file.name && f.size === file.size)) {
+                selectedFiles.push(file);
+            }
+        });
+        updateFileList();
+        updateFileInput();
+    }
+
+    function removeFile(index) {
+        selectedFiles.splice(index, 1);
+        updateFileList();
+        updateFileInput();
+    }
+
+    function updateFileList() {
+        fileList.innerHTML = '';
+        
+        if (selectedFiles.length === 0) {
+            return;
+        }
+
+        const listContainer = document.createElement('div');
+        listContainer.className = 'border rounded p-3';
+        listContainer.style.backgroundColor = colors.bgSecondary;
+         listContainer.style.borderColor = colors.borderColor;
+         listContainer.style.color = colors.textPrimary;
+        
+        const title = document.createElement('h6');
+        title.textContent = `Arquivos selecionados (${selectedFiles.length})`;
+        title.className = 'mb-3';
+        title.style.color = colors.textPrimary;
+        listContainer.appendChild(title);
+
+        selectedFiles.forEach((file, index) => {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'd-flex justify-content-between align-items-center mb-2 p-2 border rounded';
+            fileItem.style.backgroundColor = colors.bgSecondary;
+             fileItem.style.borderColor = colors.borderColor;
+             fileItem.style.color = colors.textPrimary;
+            
+            const fileInfo = document.createElement('div');
+            fileInfo.className = 'd-flex align-items-center';
+            
+            const fileIcon = document.createElement('i');
+            fileIcon.className = getFileIcon(file.name);
+            fileIcon.style.marginRight = '10px';
+            
+            const fileName = document.createElement('span');
+            fileName.textContent = file.name;
+            fileName.className = 'me-2';
+            
+            const fileSize = document.createElement('small');
+            fileSize.textContent = `(${formatFileSize(file.size)})`;
+            fileSize.style.color = colors.textSecondary;
+            
+            fileInfo.appendChild(fileIcon);
+            fileInfo.appendChild(fileName);
+            fileInfo.appendChild(fileSize);
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn btn-sm';
+            removeBtn.style.backgroundColor = '#e53e3e';
+            removeBtn.style.borderColor = '#e53e3e';
+            removeBtn.style.color = 'white';
+            removeBtn.style.padding = '3px 6px';
+            removeBtn.style.fontSize = '11px';
+            removeBtn.innerHTML = '<i class="fas fa-trash"></i>';
+            removeBtn.onclick = () => removeFile(index);
+            removeBtn.onmouseover = () => { removeBtn.style.backgroundColor = '#c53030'; };
+            removeBtn.onmouseout = () => { removeBtn.style.backgroundColor = '#e53e3e'; };
+            
+            fileItem.appendChild(fileInfo);
+            fileItem.appendChild(removeBtn);
+            listContainer.appendChild(fileItem);
+        });
+        
+        fileList.appendChild(listContainer);
+    }
+
+    function updateFileInput() {
+        // Criar um novo DataTransfer para atualizar o input
+        const dt = new DataTransfer();
+        selectedFiles.forEach(file => {
+            dt.items.add(file);
+        });
+        fileInput.files = dt.files;
+    }
+
+    function getFileIcon(fileName) {
+        const extension = fileName.split('.').pop().toLowerCase();
+        switch (extension) {
+            case 'pdf': return 'fas fa-file-pdf text-danger';
+            case 'doc': case 'docx': return 'fas fa-file-word text-primary';
+            case 'xls': case 'xlsx': return 'fas fa-file-excel text-success';
+            case 'jpg': case 'jpeg': case 'png': case 'gif': return 'fas fa-file-image text-info';
+            case 'zip': case 'rar': return 'fas fa-file-archive text-warning';
+            default: return 'fas fa-file text-secondary';
+        }
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
 });
 </script>
 {% endblock %}

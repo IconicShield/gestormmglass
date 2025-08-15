@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório do Pedido</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <style>
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            
+            body {
+                margin: 0;
+                padding: 20px;
+                font-size: 12pt;
+            }
+            
+            .container {
+                max-width: none;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            
+            .relatorio-header {
+                border-bottom: 2px solid #333;
+                padding-bottom: 15px;
+                margin-bottom: 20px;
+            }
+            
+            .relatorio-container {
+                box-shadow: none;
+                border-radius: 0;
+                padding-bottom: 15px;
+                margin-bottom: 20px;
+            }
+            
+            .relatorio-imagem {
+                max-width: 100%;
+                height: auto;
+                page-break-inside: avoid;
+                margin-bottom: 15px;
+                border: 1px solid #ddd;
+                object-fit: contain;
+            }
+            
+            .relatorio-imagem.primeira-imagem {
+                max-height: 15cm;
+                width: auto;
+                display: block;
+                margin: 1cm auto;
+            }
+            
+            .relatorio-imagem.imagem-pequena {
+                max-height: 8cm;
+                max-width: 45%;
+                display: inline-block;
+                margin: 0.5cm 0.25cm;
+                vertical-align: top;
+            }
+            
+            .relatorio-imagem.imagem-media {
+                max-height: 12cm;
+                width: auto;
+                display: block;
+                margin: 0.75cm auto;
+            }
+            
+            .container-imagens {
+                page-break-inside: avoid;
+                margin-bottom: 1cm;
+            }
+            
+            .linha-imagens {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                align-items: flex-start;
+                gap: 0.5cm;
+                margin-bottom: 0.75cm;
+                page-break-inside: avoid;
+            }
+            
+            .info-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+                margin-bottom: 20px;
+            }
+            
+            .info-item {
+                border-bottom: 1px solid #eee;
+                padding-bottom: 5px;
+            }
+            
+            .info-label {
+                font-weight: bold;
+                color: #333;
+            }
+        }
+        
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        
+        /* Regra universal para caixa alta */
+        * {
+            text-transform: uppercase !important;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            text-transform: uppercase;
+        }
+        
+        .relatorio-container {
+            background: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .relatorio-content {
+            padding: 30px;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .info-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+        
+        .info-value {
+            font-size: 1.1em;
+            color: #212529;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        
+        .anexos-section {
+            margin-top: 40px;
+        }
+        
+        .anexos-title {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #dee2e6;
+            text-transform: uppercase;
+        }
+        
+        .relatorio-imagem {
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+            page-break-inside: avoid;
+            page-break-after: auto;
+            object-fit: contain;
+        }
+        
+        .relatorio-imagem.primeira-imagem {
+            max-height: 60vh;
+            width: auto;
+            display: block;
+            margin: 20px auto;
+        }
+        
+        .relatorio-imagem.imagem-pequena {
+            max-height: 40vh;
+            width: auto;
+            display: inline-block;
+            margin: 10px 5px;
+            vertical-align: top;
+        }
+        
+        .relatorio-imagem.imagem-media {
+            max-height: 50vh;
+            width: auto;
+            display: block;
+            margin: 15px auto;
+        }
+        
+        .container-imagens {
+            page-break-inside: avoid;
+            margin-bottom: 20px;
+        }
+        
+        .linha-imagens {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 15px;
+            page-break-inside: avoid;
+        }
+        
+        .relatorio-imagem:hover {
+            transform: scale(1.02);
+        }
+        
+        .controles-impressao {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .btn-controle {
+            margin-left: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .data-atual {
+            font-size: 0.9em;
+            color: rgba(255,255,255,0.8);
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="controles-impressao no-print">
+        <button onclick="window.print()" class="btn btn-primary btn-controle" style="text-transform: uppercase;">
+            <i class="fas fa-print"></i> Imprimir
+        </button>
+        <button onclick="baixarPDF()" class="btn btn-success btn-controle" style="text-transform: uppercase;">
+            <i class="fas fa-download"></i> Download PDF
+        </button>
+        <button onclick="window.close()" class="btn btn-secondary btn-controle" style="text-transform: uppercase;">
+            <i class="fas fa-times"></i> Fechar
+        </button>
+    </div>
+
+    <div class="container-fluid">
+        <div class="relatorio-container">
+            <div class="relatorio-header">
+                <h1 style="text-transform: uppercase;"><i class="fas fa-file-alt"></i> Relatório do Pedido</h1>
+                <div class="data-atual" style="text-transform: uppercase;">
+                    Gerado em: <span id="dataAtual"></span>
+                </div>
+            </div>
+            
+            <div class="relatorio-content">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Data da Entrada</div>
+                        <div class="info-value">{{ data_formatada }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Número do Pedido</div>
+                        <div class="info-value">{{ numero_pedido }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Número do Cliente</div>
+                        <div class="info-value">{{ numero_cliente }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Nome do Cliente</div>
+                        <div class="info-value">{{ nome_cliente }}</div>
+                    </div>
+                </div>
+                
+                {% if obra %}
+                <div class="info-item" style="grid-column: 1 / -1; margin-bottom: 30px;">
+                    <div class="info-label">Obra</div>
+                    <div class="info-value">{{ obra }}</div>
+                </div>
+                {% endif %}
+                
+                {% if anexos_selecionados %}
+                <div class="anexos-section">
+                    <div class="anexos-title">
+                        <i class="fas fa-images"></i> Anexos do Pedido
+                    </div>
+                    {% for anexo in anexos_selecionados %}
+                        {% if anexo.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp')) %}
+                            <div class="text-center mb-4">
+                                <img src="{{ url_for('uploaded_file', filename=anexo.filename) }}" 
+                                     class="relatorio-imagem" 
+                                     alt="{{ anexo.filename }}">
+                                <div class="mt-2 text-muted" style="text-transform: uppercase;">
+                                    <small>{{ anexo.filename }}</small>
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <script>
+        // Definir data atual
+        document.getElementById('dataAtual').textContent = new Date().toLocaleString('pt-BR');
+        
+        // Função para baixar como PDF
+        function baixarPDF() {
+            const { jsPDF } = window.jspdf;
+            const elemento = document.querySelector('.relatorio-container');
+            
+            html2canvas(elemento, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: true
+            }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                
+                const imgWidth = 210; // A4 width in mm
+                const pageHeight = 295; // A4 height in mm
+                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                let heightLeft = imgHeight;
+                
+                let position = 0;
+                
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+                
+                while (heightLeft >= 0) {
+                    position = heightLeft - imgHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                    heightLeft -= pageHeight;
+                }
+                
+                pdf.save(`relatorio-pedido-{{ numero_pedido }}.pdf`);
+            }).catch(error => {
+                console.error('Erro ao gerar PDF:', error);
+                alert('Erro ao gerar PDF. Tente usar a função de impressão do navegador.');
+            });
+        }
+        
+        // Sistema inteligente de layout para imagens
+        function organizarImagensInteligente() {
+            const anexosSection = document.querySelector('.anexos-section');
+            if (!anexosSection) return;
+            
+            const imagens = anexosSection.querySelectorAll('.relatorio-imagem');
+            if (imagens.length === 0) return;
+            
+            // Limpar containers existentes
+            imagens.forEach(img => {
+                img.className = 'relatorio-imagem';
+            });
+            
+            // Primeira imagem - sempre sozinha e otimizada
+            if (imagens[0]) {
+                imagens[0].classList.add('primeira-imagem');
+                const container = document.createElement('div');
+                container.className = 'container-imagens';
+                imagens[0].parentNode.insertBefore(container, imagens[0]);
+                container.appendChild(imagens[0]);
+            }
+            
+            // Organizar imagens restantes
+            const imagensRestantes = Array.from(imagens).slice(1);
+            let linhaAtual = null;
+            let imagensPorLinha = 0;
+            const maxImagensPorLinha = 2;
+            
+            imagensRestantes.forEach((img, index) => {
+                // Determinar tamanho da imagem baseado em sua proporção
+                img.onload = function() {
+                    const aspectRatio = this.naturalWidth / this.naturalHeight;
+                    
+                    if (aspectRatio > 1.5) {
+                        // Imagem muito larga - ocupar linha inteira
+                        this.classList.add('imagem-media');
+                        const container = document.createElement('div');
+                        container.className = 'container-imagens';
+                        this.parentNode.insertBefore(container, this);
+                        container.appendChild(this);
+                        linhaAtual = null;
+                        imagensPorLinha = 0;
+                    } else {
+                        // Imagem pode ser agrupada
+                        this.classList.add('imagem-pequena');
+                        
+                        if (!linhaAtual || imagensPorLinha >= maxImagensPorLinha) {
+                            // Criar nova linha
+                            const container = document.createElement('div');
+                            container.className = 'container-imagens';
+                            linhaAtual = document.createElement('div');
+                            linhaAtual.className = 'linha-imagens';
+                            container.appendChild(linhaAtual);
+                            this.parentNode.insertBefore(container, this);
+                            imagensPorLinha = 0;
+                        }
+                        
+                        linhaAtual.appendChild(this);
+                        imagensPorLinha++;
+                    }
+                };
+                
+                // Trigger onload se a imagem já estiver carregada
+                if (img.complete) {
+                    img.onload();
+                }
+            });
+        }
+        
+        // Auto-ajustar imagens para impressão
+        window.addEventListener('beforeprint', function() {
+            organizarImagensInteligente();
+            
+            const imagens = document.querySelectorAll('.relatorio-imagem');
+            imagens.forEach(img => {
+                img.style.maxWidth = '100%';
+                img.style.height = 'auto';
+            });
+        });
+        
+        // Organizar imagens ao carregar a página
+        window.addEventListener('load', function() {
+            setTimeout(organizarImagensInteligente, 500);
+        });
+    </script>
+</body>
+</html>

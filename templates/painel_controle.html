@@ -1,9 +1,445 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<style>
+/* Animações para as notificações */
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* Garantir visibilidade dos checkboxes */
+.pedido-checkbox, .orcamento-checkbox {
+    width: 16px !important;
+    height: 16px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: inline-block !important;
+    position: relative !important;
+    margin: 0 !important;
+    cursor: pointer !important;
+}
+
+/* Estilo para a coluna do checkbox */
+td:first-child {
+    text-align: center;
+    vertical-align: middle;
+    width: 30px;
+}
+
+th:first-child {
+    text-align: center;
+    width: 30px;
+}
+
+/* Espaçamento moderno para botões de ação */
+.d-flex.gap-1 > * {
+    margin-right: 0.25rem;
+}
+
+.d-flex.gap-1 > *:last-child {
+    margin-right: 0;
+}
+
+/* Larguras fixas para colunas das tabelas */
+#pedidos-table, #orcamentos-table {
+    table-layout: fixed;
+    width: 100%;
+    max-width: 100%;
+}
+
+.table-responsive {
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+#pedidos-table th:nth-child(1), #orcamentos-table th:nth-child(1) { width: 3%; }   /* Checkbox */
+
+/* Estilos para os cards de anexos no modal */
+.anexo-card {
+    border: 2px solid #dee2e6;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.anexo-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.anexo-card.selected {
+    border-color: #007bff;
+    background-color: #f8f9ff;
+    box-shadow: 0 4px 12px rgba(0,123,255,0.2);
+}
+
+.anexo-preview {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 1px dashed #dee2e6;
+}
+
+.anexo-card .form-check-input:checked + .form-check-label .fa-check-circle {
+    color: #28a745 !important;
+}
+
+/* Estilos para a caixa compacta de anexos */
+.anexos-compact-box {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 32px;
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+    background: var(--input-bg, #ffffff);
+    color: var(--text-primary, #495057);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    font-size: 12px;
+    gap: 4px;
+}
+
+.anexos-compact-box:hover {
+    border-color: #007bff;
+    background: var(--hover-bg, #e3f2fd);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,123,255,0.2);
+}
+
+.anexos-compact-box.anexos-empty {
+    border-style: dashed;
+    border-color: #6c757d;
+    color: #6c757d;
+}
+
+.anexos-compact-box.anexos-empty:hover {
+    border-color: #28a745;
+    color: #28a745;
+    background: rgba(40, 167, 69, 0.1);
+}
+
+.anexos-compact-box.drag-over {
+    border-color: #28a745;
+    background: rgba(40, 167, 69, 0.1);
+    transform: scale(1.05);
+}
+
+.anexos-compact-box i {
+    font-size: 14px;
+}
+
+.anexos-count {
+    font-weight: bold;
+    font-size: 11px;
+    min-width: 12px;
+    text-align: center;
+}
+
+/* Animação de upload */
+.anexos-compact-box.uploading {
+    border-color: #ffc107;
+    background: rgba(255, 193, 7, 0.1);
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
+}
+
+.anexo-card .form-check-input:not(:checked) + .form-check-label .fa-check-circle {
+    color: #6c757d !important;
+}
+
+.anexo-info h6 {
+    color: #495057;
+    font-weight: 600;
+}
+
+/* Responsividade para dispositivos móveis */
+@media (max-width: 768px) {
+    .anexo-card .col-md-4 {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
+}
+
+@media (max-width: 576px) {
+    .anexo-card .col-md-4 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}
+#pedidos-table th:nth-child(2), #orcamentos-table th:nth-child(2) { width: 8%; }   /* Data */
+#pedidos-table th:nth-child(3), #orcamentos-table th:nth-child(3) { width: 6%; }  /* N° Pedido */
+#pedidos-table th:nth-child(4), #orcamentos-table th:nth-child(4) { width: 6%; }  /* N° Cliente */
+#pedidos-table th:nth-child(5), #orcamentos-table th:nth-child(5) { width: 18%; }  /* Cliente */
+#pedidos-table th:nth-child(6), #orcamentos-table th:nth-child(6) { width: 12%; }  /* Obra */
+#pedidos-table th:nth-child(7), #orcamentos-table th:nth-child(7) { width: 9%; }  /* Status */
+#pedidos-table th:nth-child(8), #orcamentos-table th:nth-child(8) { width: 19%; }  /* Descrição */
+#pedidos-table th:nth-child(9), #orcamentos-table th:nth-child(9) { width: 19%; }  /* Observações */
+#pedidos-table th:nth-child(10), #orcamentos-table th:nth-child(10) { width: 8%; }  /* Anexos */
+#pedidos-table th:nth-child(11), #orcamentos-table th:nth-child(11) { width: 20%; }  /* Ações */
+
+#pedidos-table td, #orcamentos-table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Garantir visibilidade dos botões de ação */
+#pedidos-table td:nth-child(11), #orcamentos-table td:nth-child(11) {
+    overflow: visible !important;
+    white-space: nowrap !important;
+    min-width: 120px !important;
+    text-align: center !important;
+}
+
+/* Estilo para botões de ação */
+.btn-xs, .btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.2;
+    border-radius: 0.2rem;
+    margin: 0 2px;
+    display: inline-block !important;
+    visibility: visible !important;
+}
+
+/* Estilo específico para o botão de relatório */
+.btn-warning {
+    background-color: #ffc107 !important;
+    border-color: #ffc107 !important;
+    color: #212529 !important;
+    font-weight: 500 !important;
+}
+
+/* Garantir que os botões não sejam cortados */
+.table-responsive {
+    overflow-x: auto;
+    overflow-y: visible;
+}
+
+/* CSS duplicado removido - mantido apenas acima */
+
+/* Forçar visibilidade de todos os botões de ação */
+td:last-child .btn {
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+}
+
+/* Estilo específico para a coluna de ações */
+td:last-child {
+    white-space: nowrap !important;
+    overflow: visible !important;
+    min-width: 120px !important;
+    padding: 0.5rem !important;
+}
+
+/* Remover destaque de debug da coluna de ações */
+
+#pedidos-table td:nth-child(3), #orcamentos-table td:nth-child(3),
+#pedidos-table td:nth-child(4), #orcamentos-table td:nth-child(4),
+#pedidos-table td:nth-child(5), #orcamentos-table td:nth-child(5) {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Estilos para o select de atualizações em tempo real */
+#update-frequency {
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+#update-frequency:focus {
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+[data-theme="dark"] #update-frequency {
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] #update-frequency:focus {
+    background-color: var(--card-bg);
+    color: var(--text-color);
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Responsividade para ajuste ao menu lateral */
+.main-content {
+    transition: all 0.3s ease;
+}
+
+.card {
+    overflow: hidden;
+}
+
+.card-body {
+    padding: 1rem;
+    overflow-x: auto;
+}
+
+/* Ajuste das tabelas para diferentes tamanhos de tela */
+@media (max-width: 1200px) {
+    #pedidos-table th:nth-child(8), #orcamentos-table th:nth-child(8),
+    #pedidos-table th:nth-child(9), #orcamentos-table th:nth-child(9) {
+        width: 12%;
+    }
+    #pedidos-table th:nth-child(5), #orcamentos-table th:nth-child(5) {
+        width: 18%;
+    }
+    /* Garantir que a coluna de ações seja sempre visível */
+    #pedidos-table th:nth-child(11), #orcamentos-table th:nth-child(11) {
+        width: 18% !important;
+        min-width: 140px !important;
+    }
+}
+
+@media (max-width: 992px) {
+    .table-responsive {
+        font-size: 0.875rem;
+    }
+}
+
+/* Estilos para Drag and Drop de Anexos */
+.anexos-cell-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    width: 100%;
+}
+
+.drag-drop-zone {
+    border: 2px dashed #ccc;
+    border-radius: 6px;
+    padding: 6px 8px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background-color: transparent;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: #666;
+    flex: 1;
+    min-width: 40px;
+    max-width: 60px;
+}
+
+.drag-drop-zone:hover {
+    border-color: #007bff;
+    background-color: #f8f9fa;
+    color: #007bff;
+}
+
+.drag-drop-zone.drag-over {
+    border-color: #007bff;
+    background-color: #e3f2fd;
+    color: #007bff;
+}
+
+.drag-drop-zone i {
+    margin: 0;
+}
+
+.anexos-actions {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.anexos-actions .btn {
+    font-size: 11px;
+    padding: 2px 6px;
+}
+
+/* Responsividade para dispositivos móveis */
+@media (max-width: 768px) {
+    .anexos-cell-container {
+        min-height: 35px;
+        gap: 6px;
+    }
+    
+    .drag-drop-zone {
+        min-height: 28px;
+        font-size: 11px;
+        padding: 4px 6px;
+        min-width: 35px;
+        max-width: 50px;
+    }
+    
+    .anexos-actions .btn {
+        font-size: 9px;
+        padding: 1px 3px;
+    }
+    
+    .anexos-cell-container .btn {
+        min-height: 28px;
+        font-size: 11px;
+        padding: 4px 6px;
+        min-width: 35px;
+        max-width: 50px;
+    }
+}
+</style>
 
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1 class="h3 mb-0">Painel de Controle</h1>
+        <div>
+            <h1 class="h3 mb-0">Painel de Controle</h1>
+            <div class="mt-2">
+                <span id="connection-status" class="badge bg-secondary">Conectando...</span>
+                <small id="last-update-time" class="text-muted ms-2">Carregando...</small>
+                <div class="mt-1">
+                     <button id="toggle-auto-update" class="btn btn-sm btn-outline-primary" onclick="toggleAutoUpdate()">
+                         <i class="fas fa-pause"></i> Pausar Atualização
+                     </button>
+                     <button class="btn btn-sm btn-outline-secondary" onclick="manualRefresh()" title="Atualizar Agora">
+                         <i class="fas fa-sync-alt"></i>
+                     </button>
+                     <select id="update-frequency" class="form-control form-control-sm d-inline-block" style="width: auto; margin-left: 5px;" onchange="changeUpdateFrequency()">
+                         <option value="3000">3s</option>
+                         <option value="5000">5s</option>
+                         <option value="10000">10s</option>
+                         <option value="30000" selected>30s</option>
+                         <option value="60000">1min</option>
+                     </select>
+                 </div>
+            </div>
+        </div>
         <div>
             <button type="button" class="btn btn-info" data-toggle="modal" data-target="#importarEntradasModal">
                 <i class="fas fa-file-upload"></i> Importar .xlsx
@@ -127,10 +563,37 @@
         <div class="card-body py-2">
             <form method="GET" action="{{ url_for('painel_controle') }}">
                 <div class="form-row align-items-end">
-                    <div class="col-md-6"><div class="form-group mb-0"><label for="q" class="small">Buscar (N°, Cliente, Descrição)</label><input type="text" class="form-control form-control-sm" id="q" name="q" value="{{ search_query }}"></div></div>
-                    <div class="col-md-4"><div class="form-group mb-0"><label for="status" class="small">Filtrar por Status</label><select id="status" name="status" class="form-control form-control-sm"><option value="">Todos</option><option value="Não iniciado" {% if selected_status == 'Não iniciado' %}selected{% endif %}>Não iniciado</option><option value="Em andamento" {% if selected_status == 'Em andamento' %}selected{% endif %}>Em andamento</option><option value="Concluído" {% if selected_status == 'Concluído' %}selected{% endif %}>Concluído</option></select></div></div>
-                    <div class="col-md-1"><div class="form-group mb-0"><button type="submit" class="btn btn-primary btn-sm btn-block" title="Filtrar"><i class="fas fa-filter"></i></button></div></div>
-                    <div class="col-md-1"><div class="form-group mb-0"><a href="{{ url_for('painel_controle') }}" class="btn btn-secondary btn-sm btn-block" title="Limpar"><i class="fas fa-eraser"></i></a></div></div>
+                    <div class="col-md-6">
+                        <div class="form-group mb-0">
+                            <label for="q" class="small">Buscar (N°, Cliente, Descrição)</label>
+                            <input type="text" class="form-control form-control-sm" id="q" name="q" value="{{ search_query }}">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group mb-0">
+                            <label for="status" class="small">Filtrar por Status</label>
+                            <select id="status" name="status" class="form-control form-control-sm">
+                                <option value="">Todos</option>
+                                <option value="Não iniciado" {% if selected_status == 'Não iniciado' %}selected{% endif %}>Não iniciado</option>
+                                <option value="Em andamento" {% if selected_status == 'Em andamento' %}selected{% endif %}>Em andamento</option>
+                                <option value="Concluído" {% if selected_status == 'Concluído' %}selected{% endif %}>Concluído</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-1">
+                        <div class="form-group mb-0">
+                            <button type="submit" class="btn btn-primary btn-sm btn-block" title="Filtrar">
+                                <i class="fas fa-filter"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-1">
+                        <div class="form-group mb-0">
+                            <a href="{{ url_for('painel_controle') }}" class="btn btn-secondary btn-sm btn-block" title="Limpar">
+                                <i class="fas fa-eraser"></i>
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </form>
         </div>
@@ -151,13 +614,22 @@
         </div>
     </div>
     
-    <table class="table table-hover table-sm shadow-sm rounded table-uppercase">
+    <table id="pedidos-table" class="table table-hover table-sm shadow-sm rounded table-uppercase">
         <thead class="thead-light">
             <tr>
                 <th width="30">
                     <input type="checkbox" id="select-all-pedidos" onchange="toggleAllPedidos(this)">
                 </th>
-                <th>Data</th><th>N° Pedido</th><th>N° Cliente</th><th>Cliente</th><th>Obra</th><th>Status</th><th>Descrição</th><th>Observações</th><th>Anexos</th><th>Ações</th>
+                <th>Data</th>
+                <th>N° Pedido</th>
+                <th>N° Cliente</th>
+                <th>Cliente</th>
+                <th>Obra</th>
+                <th>Status</th>
+                <th>Descrição</th>
+                <th>Observações</th>
+                <th>Anexos</th>
+                <th>Ações</th>
             </tr>
         </thead>
         <tbody>
@@ -185,19 +657,73 @@
                 </td>
                 <td>{% if entrada.cliente %}{{ entrada.cliente.nome }}{% else %}{{ entrada.cliente_nome_temp }}{% endif %}</td>
                 <td>{{ entrada.obra or '-' }}</td>
-                <td>{% set status_color = 'secondary' %}{% if entrada.status == 'Concluído' %}{% set status_color = 'success' %}{% elif entrada.status == 'Em andamento' %}{% set status_color = 'warning' %}{% elif entrada.status == 'Não iniciado' %}{% set status_color = 'danger' %}{% endif %}<div class="dropdown"><button class="btn btn-{{ status_color }} btn-sm dropdown-toggle" type="button" id="status-btn-{{ entrada.id }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ entrada.status }}</button><div class="dropdown-menu" aria-labelledby="status-btn-{{ entrada.id }}"><a class="dropdown-item status-option" href="#" data-id="{{ entrada.id }}" data-status="Não iniciado">Não iniciado</a><a class="dropdown-item status-option" href="#" data-id="{{ entrada.id }}" data-status="Em andamento">Em andamento</a><a class="dropdown-item status-option" href="#" data-id="{{ entrada.id }}" data-status="Concluído">Concluído</a></div></div></td>
+                <td>
+                    {% set status_color = 'secondary' %}
+                    {% if entrada.status == 'Concluído' %}
+                        {% set status_color = 'success' %}
+                    {% elif entrada.status == 'Em andamento' %}
+                        {% set status_color = 'warning' %}
+                    {% elif entrada.status == 'Não iniciado' %}
+                        {% set status_color = 'danger' %}
+                    {% endif %}
+                    <div class="dropdown">
+                        <button class="btn btn-{{ status_color }} btn-sm dropdown-toggle" type="button" id="status-btn-{{ entrada.id }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            {{ entrada.status }}
+                        </button>
+                        <div class="dropdown-menu" aria-labelledby="status-btn-{{ entrada.id }}">
+                            <a class="dropdown-item status-option" href="#" data-id="{{ entrada.id }}" data-status="Não iniciado">Não iniciado</a>
+                            <a class="dropdown-item status-option" href="#" data-id="{{ entrada.id }}" data-status="Em andamento">Em andamento</a>
+                            <a class="dropdown-item status-option" href="#" data-id="{{ entrada.id }}" data-status="Concluído">Concluído</a>
+                        </div>
+                    </div>
+                </td>
                 <td>{{ (entrada.descricao or '') | truncate(20) }}</td>
                 <td>{{ (entrada.observacoes or '') | truncate(20) or '-' }}</td>
                 <td>
                     {% if entrada.anexos %}
-                        <button type="button" class="btn btn-outline-secondary btn-sm" data-toggle="modal" data-target="#galeriaAnexos-{{ entrada.id }}">
-                            <i class="fas fa-paperclip mr-1"></i> Ver ({{ entrada.anexos|length }})
-                        </button>
+                        <div class="anexos-compact-box" 
+                             data-entrada-id="{{ entrada.id }}"
+                             ondrop="dropAnexo(event, {{ entrada.id }})"
+                             ondragover="allowDrop(event)"
+                             ondragenter="dragEnter(event)"
+                             ondragleave="dragLeave(event)"
+                             data-toggle="modal" 
+                             data-target="#galeriaAnexos-{{ entrada.id }}"
+                             title="Clique para ver anexos ou arraste arquivos aqui">
+                            <i class="fas fa-paperclip"></i>
+                            <span class="anexos-count">{{ entrada.anexos|length }}</span>
+                        </div>
                     {% else %}
-                        -
+                        <div class="anexos-compact-box anexos-empty" 
+                             data-entrada-id="{{ entrada.id }}"
+                             ondrop="dropAnexo(event, {{ entrada.id }})"
+                             ondragover="allowDrop(event)"
+                             ondragenter="dragEnter(event)"
+                             ondragleave="dragLeave(event)"
+                             title="Arraste arquivos aqui para adicionar anexos">
+                            <i class="fas fa-plus"></i>
+                            <span class="anexos-count">0</span>
+                        </div>
                     {% endif %}
                 </td>
-                <td><form action="{{ url_for('arquivar_entrada', id=entrada.id) }}" method="post" style="display: inline;"><button type="submit" class="btn btn-xs btn-secondary" title="Arquivar"><i class="fas fa-archive"></i></button></form><a href="{{ url_for('editar_entrada', id=entrada.id) }}" class="btn btn-xs btn-info" title="Editar"><i class="fas fa-edit"></i></a><form action="{{ url_for('excluir_entrada', id=entrada.id) }}" method="post" style="display: inline;" onsubmit="return confirm('Tem a certeza?');"><button type="submit" class="btn btn-xs btn-danger" title="Excluir"><i class="fas fa-trash-alt"></i></button></form></td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-warning" title="Relatório" data-toggle="modal" data-target="#relatorioModal-{{ entrada.id }}">
+                        <i class="fas fa-print"></i> Relatório
+                    </button>
+                    <form action="{{ url_for('arquivar_entrada', id=entrada.id) }}" method="post" style="display: inline;">
+                        <button type="submit" class="btn btn-sm btn-secondary" title="Arquivar">
+                            <i class="fas fa-archive"></i>
+                        </button>
+                    </form>
+                    <a href="{{ url_for('editar_entrada', id=entrada.id) }}" class="btn btn-sm btn-info" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <form action="{{ url_for('excluir_entrada', id=entrada.id) }}" method="post" style="display: inline;" onsubmit="return confirm('Tem a certeza?');">
+                        <button type="submit" class="btn btn-sm btn-danger" title="Excluir">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </form>
+                </td>
             </tr>
             {% else %}
             <tr><td colspan="11" class="text-center">Nenhum pedido ativo encontrado.</td></tr>
@@ -220,13 +746,22 @@
         </div>
     </div>
     
-    <table class="table table-hover table-sm shadow-sm rounded table-uppercase">
+    <table id="orcamentos-table" class="table table-hover table-sm shadow-sm rounded table-uppercase">
         <thead class="thead-light">
             <tr>
                 <th width="30">
                     <input type="checkbox" id="select-all-orcamentos" onchange="toggleAllOrcamentos(this)">
                 </th>
-                <th>Data</th><th>N° Pedido</th><th>N° Cliente</th><th>Cliente</th><th>Obra</th><th>Status</th><th>Descrição</th><th>Observações</th><th>Anexos</th><th>Ações</th>
+                <th>Data</th>
+                <th>N° Pedido</th>
+                <th>N° Cliente</th>
+                <th>Cliente</th>
+                <th>Obra</th>
+                <th>Status</th>
+                <th>Descrição</th>
+                <th>Observações</th>
+                <th>Anexos</th>
+                <th>Ações</th>
             </tr>
         </thead>
         <tbody>
@@ -250,19 +785,75 @@
                 </td>
                 <td>{% if entrada.cliente %}{{ entrada.cliente.nome }}{% else %}{{ entrada.cliente_nome_temp }}{% endif %}</td>
                 <td>{{ entrada.obra or '-' }}</td>
-                <td>{% set status_color = 'secondary' %}{% if entrada.status == 'Concluído' %}{% set status_color = 'success' %}{% elif entrada.status == 'Em andamento' %}{% set status_color = 'warning' %}{% elif entrada.status == 'Não iniciado' %}{% set status_color = 'danger' %}{% endif %}<div class="dropdown"><button class="btn btn-{{ status_color }} btn-sm dropdown-toggle" type="button" id="status-btn-{{ entrada.id }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ entrada.status }}</button><div class="dropdown-menu" aria-labelledby="status-btn-{{ entrada.id }}"><a class="dropdown-item status-option" href="#" data-id="{{ entrada.id }}" data-status="Não iniciado">Não iniciado</a><a class="dropdown-item status-option" href="#" data-id="{{ entrada.id }}" data-status="Em andamento">Em andamento</a><a class="dropdown-item status-option" href="#" data-id="{{ entrada.id }}" data-status="Concluído">Concluído</a></div></div></td>
+                <td>
+                    {% set status_color = 'secondary' %}
+                    {% if entrada.status == 'Concluído' %}
+                        {% set status_color = 'success' %}
+                    {% elif entrada.status == 'Em andamento' %}
+                        {% set status_color = 'warning' %}
+                    {% elif entrada.status == 'Não iniciado' %}
+                        {% set status_color = 'danger' %}
+                    {% endif %}
+                    <div class="dropdown">
+                        <button class="btn btn-{{ status_color }} btn-sm dropdown-toggle" type="button" id="status-btn-{{ entrada.id }}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            {{ entrada.status }}
+                        </button>
+                        <div class="dropdown-menu" aria-labelledby="status-btn-{{ entrada.id }}">
+                            <a class="dropdown-item status-option" href="#" data-id="{{ entrada.id }}" data-status="Não iniciado">Não iniciado</a>
+                            <a class="dropdown-item status-option" href="#" data-id="{{ entrada.id }}" data-status="Em andamento">Em andamento</a>
+                            <a class="dropdown-item status-option" href="#" data-id="{{ entrada.id }}" data-status="Concluído">Concluído</a>
+                        </div>
+                    </div>
+                </td>
                 <td>{{ (entrada.descricao or '') | truncate(20) }}</td>
                 <td>{{ (entrada.observacoes or '') | truncate(20) or '-' }}</td>
                 <td>
                     {% if entrada.anexos %}
-                        <button type="button" class="btn btn-outline-secondary btn-sm" data-toggle="modal" data-target="#galeriaAnexos-{{ entrada.id }}">
-                            <i class="fas fa-paperclip mr-1"></i> ({{ entrada.anexos|length }})
-                        </button>
+                        <div class="anexos-compact-box" 
+                             data-entrada-id="{{ entrada.id }}"
+                             ondrop="dropAnexo(event, {{ entrada.id }})"
+                             ondragover="allowDrop(event)"
+                             ondragenter="dragEnter(event)"
+                             ondragleave="dragLeave(event)"
+                             data-toggle="modal" 
+                             data-target="#galeriaAnexos-{{ entrada.id }}"
+                             title="Clique para ver anexos ou arraste arquivos aqui">
+                            <i class="fas fa-paperclip"></i>
+                            <span class="anexos-count">{{ entrada.anexos|length }}</span>
+                        </div>
                     {% else %}
-                        -
+                        <div class="anexos-compact-box anexos-empty" 
+                             data-entrada-id="{{ entrada.id }}"
+                             ondrop="dropAnexo(event, {{ entrada.id }})"
+                             ondragover="allowDrop(event)"
+                             ondragenter="dragEnter(event)"
+                             ondragleave="dragLeave(event)"
+                             title="Arraste arquivos aqui para adicionar anexos">
+                            <i class="fas fa-plus"></i>
+                            <span class="anexos-count">0</span>
+                        </div>
                     {% endif %}
                 </td>
-                <td><form action="{{ url_for('arquivar_entrada', id=entrada.id) }}" method="post" style="display: inline;"><button type="submit" class="btn btn-xs btn-secondary" title="Arquivar"><i class="fas fa-archive"></i></button></form><form action="{{ url_for('converter_para_pedido', id=entrada.id) }}" method="post" style="display: inline;" onsubmit="return confirm('Converter em Pedido?');"><button type="submit" class="btn btn-xs btn-success" title="Converter"><i class="fas fa-check-circle"></i></button></form><a href="{{ url_for('editar_entrada', id=entrada.id) }}" class="btn btn-xs btn-info" title="Editar"><i class="fas fa-edit"></i></a><form action="{{ url_for('excluir_entrada', id=entrada.id) }}" method="post" style="display: inline;" onsubmit="return confirm('Tem a certeza?');"><button type="submit" class="btn btn-xs btn-danger" title="Excluir"><i class="fas fa-trash-alt"></i></button></form></td>
+                <td>
+                    <form action="{{ url_for('converter_para_pedido', id=entrada.id) }}" method="post" style="display: inline;" onsubmit="return confirm('Converter em Pedido?');">
+                        <button type="submit" class="btn btn-xs btn-success" title="Converter">
+                            <i class="fas fa-exchange-alt"></i>
+                        </button>
+                    </form>
+                    <form action="{{ url_for('arquivar_entrada', id=entrada.id) }}" method="post" style="display: inline;">
+                        <button type="submit" class="btn btn-xs btn-secondary" title="Arquivar">
+                            <i class="fas fa-archive"></i>
+                        </button>
+                    </form>
+                    <a href="{{ url_for('editar_entrada', id=entrada.id) }}" class="btn btn-xs btn-info" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </a>
+                    <form action="{{ url_for('excluir_entrada', id=entrada.id) }}" method="post" style="display: inline;" onsubmit="return confirm('Tem a certeza?');">
+                        <button type="submit" class="btn btn-xs btn-danger" title="Excluir">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </form>
+                </td>
             </tr>
             {% else %}
             <tr><td colspan="11" class="text-center">Nenhum orçamento encontrado.</td></tr>
@@ -430,8 +1021,35 @@
                                     {% for anexo in entrada.anexos %}
                                     <div class="carousel-item text-center h-100 {% if loop.first %}active{% endif %}">
                                         {% if anexo.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')) %}
-                                            <div class="d-flex justify-content-center align-items-center h-100" style="background-color: #343a40;">
-                                                <img src="{{ url_for('uploaded_file', filename=anexo.filename) }}" style="object-fit: contain; max-width: 100%; max-height: 100%;" alt="{{ anexo.filename }}">
+                                            <div class="d-flex justify-content-center align-items-center h-100 position-relative" style="background-color: #343a40;">
+                                                <img src="{{ url_for('uploaded_file', filename=anexo.filename) }}" class="panzoom-image" style="object-fit: contain; max-width: 100%; max-height: 100%; cursor: grab;" alt="{{ anexo.filename }}">
+                                                
+                                                <!-- Controles de imagem -->
+                                                <div class="image-controls position-absolute" style="top: 10px; right: 10px; z-index: 1050;">
+                                                    <div class="btn-group-vertical" role="group">
+                                                        <button type="button" class="btn btn-dark btn-sm rotate-left" title="Rodar à esquerda">
+                                                            <i class="fas fa-undo"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-dark btn-sm rotate-right" title="Rodar à direita">
+                                                            <i class="fas fa-redo"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-dark btn-sm zoom-in" title="Ampliar">
+                                                             <i class="fas fa-search-plus"></i>
+                                                         </button>
+                                                         <button type="button" class="btn btn-dark btn-sm zoom-out" title="Diminuir">
+                                                             <i class="fas fa-search-minus"></i>
+                                                         </button>
+                                                         <button type="button" class="btn btn-dark btn-sm zoom-reset" title="Reset zoom">
+                                                             <i class="fas fa-expand-arrows-alt"></i>
+                                                         </button>
+                                                        <button type="button" class="btn btn-dark btn-sm download-image" title="Download" data-filename="{{ anexo.filename }}">
+                                                            <i class="fas fa-download"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-dark btn-sm print-image" title="Imprimir" data-filename="{{ anexo.filename }}">
+                                                            <i class="fas fa-print"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </div>
                                         {% elif anexo.filename.lower().endswith('.pdf') %}
                                             <iframe src="{{ url_for('uploaded_file', filename=anexo.filename) }}" width="100%" height="100%" style="border: none;"></iframe>
@@ -448,14 +1066,14 @@
                                     {% endfor %}
                                 </div>
                                 {% if entrada.anexos|length > 1 %}
-                                <a class="carousel-control-prev" href="#carouselAnexos-{{ entrada.id }}" role="button" data-slide="prev">
-                                    <span class="carousel-control-prev-icon" aria-hidden="true" style="background-color: rgba(0,0,0,0.5); border-radius: 50%;"></span>
-                                    <span class="sr-only">Previous</span>
-                                </a>
-                                <a class="carousel-control-next" href="#carouselAnexos-{{ entrada.id }}" role="button" data-slide="next">
-                                    <span class="carousel-control-next-icon" aria-hidden="true" style="background-color: rgba(0,0,0,0.5); border-radius: 50%;"></span>
-                                    <span class="sr-only">Next</span>
-                                </a>
+                                <a class="carousel-control-prev" href="#carouselAnexos-{{ entrada.id }}" role="button" data-slide="prev" style="width: 40px; height: 40px; top: 50%; transform: translateY(-50%); left: 10px;">
+                    <span class="carousel-control-prev-icon" aria-hidden="true" style="background-color: rgba(0,0,0,0.7); border-radius: 50%; width: 30px; height: 30px;"></span>
+                    <span class="sr-only">Previous</span>
+                </a>
+                <a class="carousel-control-next" href="#carouselAnexos-{{ entrada.id }}" role="button" data-slide="next" style="width: 40px; height: 40px; top: 50%; transform: translateY(-50%); right: 10px;">
+                    <span class="carousel-control-next-icon" aria-hidden="true" style="background-color: rgba(0,0,0,0.7); border-radius: 50%; width: 30px; height: 30px;"></span>
+                    <span class="sr-only">Next</span>
+                </a>
                                 {% endif %}
                             </div>
                         </div>
@@ -467,14 +1085,257 @@
             </div>
         {% endif %}
 
+        <!-- Modal de Configuração do Relatório -->
+        <div class="modal fade" id="relatorioModal-{{ entrada.id }}" tabindex="-1" role="dialog" aria-labelledby="relatorioModalLabel-{{ entrada.id }}" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="relatorioModalLabel-{{ entrada.id }}">Configurar Relatório - Pedido {{ entrada.numero_pedido }}</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="relatorioForm-{{ entrada.id }}">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="relatorio-data-{{ entrada.id }}">Data da Entrada:</label>
+                                        <input type="date" class="form-control" id="relatorio-data-{{ entrada.id }}" value="{{ entrada.data_registro.strftime('%Y-%m-%d') }}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="relatorio-numero-pedido-{{ entrada.id }}">N° do Pedido:</label>
+                                        <input type="text" class="form-control" id="relatorio-numero-pedido-{{ entrada.id }}" value="{{ entrada.numero_pedido }}">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="relatorio-numero-cliente-{{ entrada.id }}">N° do Cliente:</label>
+                                        <input type="text" class="form-control" id="relatorio-numero-cliente-{{ entrada.id }}" value="{% if entrada.cliente %}{{ entrada.cliente.numero_cliente }}{% else %}S/N{% endif %}">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="relatorio-nome-cliente-{{ entrada.id }}">Nome do Cliente:</label>
+                                        <input type="text" class="form-control" id="relatorio-nome-cliente-{{ entrada.id }}" value="{% if entrada.cliente %}{{ entrada.cliente.nome }}{% else %}{{ entrada.cliente_nome_temp }}{% endif %}">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="relatorio-obra-{{ entrada.id }}">Obra:</label>
+                                <input type="text" class="form-control" id="relatorio-obra-{{ entrada.id }}" value="{{ entrada.obra or '' }}">
+                            </div>
+                            
+                            {% if entrada.anexos %}
+                            <div class="form-group">
+                                <label>Selecionar Anexos para o Relatório:</label>
+                                <div class="row" id="anexos-selection-{{ entrada.id }}">
+                                    {% for anexo in entrada.anexos %}
+                                    <div class="col-md-3 mb-3">
+                                        <div class="card">
+                                            <div class="card-body text-center p-2">
+                                                <div class="form-check mb-2">
+                                                    <input class="form-check-input" type="checkbox" id="anexo-{{ anexo.id }}" name="anexos_selecionados" value="{{ anexo.id }}" checked>
+                                                    <label class="form-check-label" for="anexo-{{ anexo.id }}">
+                                                        Incluir
+                                                    </label>
+                                                </div>
+                                                {% if anexo.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp')) %}
+                                                     <img src="{{ url_for('uploaded_file', filename=anexo.filename) }}" class="img-thumbnail" style="max-width: 80px; max-height: 80px;" alt="{{ anexo.filename }}">
+                                                 {% elif anexo.filename.lower().endswith('.pdf') %}
+                                                     <i class="fas fa-file-pdf fa-3x text-danger"></i>
+                                                 {% else %}
+                                                     <i class="fas fa-file fa-3x text-secondary"></i>
+                                                 {% endif %}
+                                                 <div class="mt-1">
+                                                     <small class="text-muted">{{ anexo.filename[:15] }}{% if anexo.filename|length > 15 %}...{% endif %}</small>
+                                                 </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" onclick="gerarRelatorio({{ entrada.id }})">Visualizar Relatório</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     {% endfor %}
 
 {% endblock %}
 
 {% block scripts %}
+    <!-- Sistema modular do painel -->
+    <script src="{{ url_for('static', filename='js/painel-sistema.js') }}"></script>
+    
     <script>
-    document.addEventListener('DOMContentLoaded',function(){
-        // Script para atualização de status em tempo real
+    // Compatibilidade com sistema legado - será removido em versões futuras
+    window.PAINEL_SYSTEM = window.PAINEL_SYSTEM || {
+        isInitialized: false,
+        isInitializing: false,
+        initPromise: null,
+        observers: [],
+        statusInterval: null,
+        initTimeout: null,
+        autoUpdateInterval: null,
+        lastUpdateTime: null
+    };
+    
+    // Função para destruir completamente o sistema anterior
+     window.PAINEL_SYSTEM.destroy = function() {
+         console.log('Destruindo sistema anterior...');
+         
+         // Cancela timeout de inicialização se existir
+         if (this.initTimeout) {
+             clearTimeout(this.initTimeout);
+             this.initTimeout = null;
+         }
+         
+         // Para todos os intervals
+         if (this.statusInterval) {
+             clearInterval(this.statusInterval);
+             this.statusInterval = null;
+         }
+         
+         if (this.autoUpdateInterval) {
+             clearInterval(this.autoUpdateInterval);
+             this.autoUpdateInterval = null;
+         }
+         
+
+         
+         // Remove todos os observers
+         this.observers.forEach(observer => {
+             if (observer && observer.disconnect) {
+                 observer.disconnect();
+             }
+         });
+         this.observers = [];
+         
+         // Remove todos os event listeners personalizados
+         document.querySelectorAll('[data-listener-attached]').forEach(element => {
+             element.removeAttribute('data-listener-attached');
+         });
+         
+         // Reset flags
+         this.isInitialized = false;
+         this.isInitializing = false;
+         this.initPromise = null;
+     };
+    
+    // Função de inicialização única com debounce
+     window.PAINEL_SYSTEM.safeInitialize = function() {
+         // Se já está inicializado, ignora
+         if (this.isInitialized) {
+             console.log('Sistema já inicializado, ignorando');
+             return Promise.resolve();
+         }
+         
+         // Se já está inicializando, retorna a promise existente
+         if (this.isInitializing && this.initPromise) {
+             console.log('Inicialização já em andamento, aguardando...');
+             return this.initPromise;
+         }
+         
+         // Marca como inicializando
+         this.isInitializing = true;
+         
+         // Cria nova promise de inicialização
+         this.initPromise = new Promise((resolve, reject) => {
+             // Cancela timeout anterior se existir
+             if (this.initTimeout) {
+                 clearTimeout(this.initTimeout);
+             }
+             
+             // Debounce de 50ms para evitar múltiplas inicializações
+             this.initTimeout = setTimeout(() => {
+                 try {
+                     console.log('Executando inicialização única...');
+                     
+                     // Limpa recursos anteriores
+                     this.destroy();
+                     
+                     // Marca como inicializado ANTES de executar
+                     this.isInitialized = true;
+                     this.isInitializing = false;
+                     
+                     // Executa inicializações
+                     initializeStatusSystem();
+                     protectModals();
+                     initializeAutoUpdate();
+                     
+                     console.log('Sistema inicializado com sucesso');
+                     resolve();
+                 } catch (error) {
+                     console.error('Erro na inicialização:', error);
+                     this.isInitialized = false;
+                     this.isInitializing = false;
+                     reject(error);
+                 }
+             }, 50);
+         });
+         
+         return this.initPromise;
+     };
+    
+    document.addEventListener('DOMContentLoaded', function() {
+          // Usa inicialização segura com debounce
+          window.PAINEL_SYSTEM.safeInitialize().catch(error => {
+              console.error('Falha na inicialização do sistema:', error);
+          });
+      });
+    
+    // Proteção adicional contra recarregamentos
+      window.addEventListener('beforeunload', function() {
+          window.PAINEL_SYSTEM.destroy();
+      });
+      
+      // Proteção contra mudanças de visibilidade da página
+      document.addEventListener('visibilitychange', function() {
+          if (document.visibilityState === 'visible' && window.PAINEL_SYSTEM.isInitialized) {
+              // Reaplica estilos quando a página volta a ficar visível
+              setTimeout(() => {
+                  protectModals();
+                  restoreAnexosContent();
+              }, 100);
+              
+              // Reativa atualização automática se estava pausada
+              if (!window.PAINEL_SYSTEM.autoUpdateInterval) {
+                  initializeAutoUpdate();
+              }
+          } else if (document.visibilityState === 'hidden') {
+              // Pausa atualização automática quando página não está visível
+              if (window.PAINEL_SYSTEM.autoUpdateInterval) {
+                  clearInterval(window.PAINEL_SYSTEM.autoUpdateInterval);
+                  window.PAINEL_SYSTEM.autoUpdateInterval = null;
+                  console.log('Atualização automática pausada (página oculta)');
+              }
+          }
+      });
+    
+    // Função para restaurar conteúdo de anexos se alterado
+    function restoreAnexosContent() {
+        document.querySelectorAll('.anexos-cell[data-original-content]').forEach(cell => {
+            if (cell.innerHTML !== cell.getAttribute('data-original-content')) {
+                console.log('Restaurando conteúdo de anexos alterado');
+                cell.innerHTML = cell.getAttribute('data-original-content');
+            }
+        });
+    }
+    
+    // Sistema de atualização de status via dropdown
+    function initializeStatusSystem() {
         const statusOptions = document.querySelectorAll('.status-option');
         const colorMap = {
             'Não iniciado': 'btn-danger',
@@ -483,93 +1344,964 @@
         };
 
         statusOptions.forEach(option => {
-            option.addEventListener('click', function(event) {
-                event.preventDefault();
-                const entryId = this.dataset.id;
-                const newStatus = this.dataset.status;
-
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', `/atualizar-status/${entryId}`, true);
-                xhr.setRequestHeader('Content-Type', 'application/json');
-
-                xhr.onload = function() {
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        const data = JSON.parse(xhr.responseText);
-                        if (data.success) {
-                            // 1. Atualiza o botão de status na tabela
-                            const button = document.getElementById(`status-btn-${entryId}`);
-                            if (button) {
-                                button.textContent = newStatus;
-                                button.classList.remove('btn-danger', 'btn-warning', 'btn-success', 'btn-secondary');
-                                button.classList.add(colorMap[newStatus] || 'btn-secondary');
-                            }
-
-                            // 2. Atualiza o dashboard de Pedidos
-                            const dashPedidos = data.dashboard.pedidos;
-                            document.getElementById('dash-pedidos-total').textContent = dashPedidos.total;
-                            document.getElementById('dash-pedidos-nao-iniciado').textContent = dashPedidos.nao_iniciado;
-                            document.getElementById('dash-pedidos-em-andamento').textContent = dashPedidos.em_andamento;
-                            document.getElementById('dash-pedidos-concluido').textContent = dashPedidos.concluido;
-
-                            // 3. Atualiza o dashboard de Orçamentos
-                            const dashOrcamentos = data.dashboard.orcamentos;
-                            document.getElementById('dash-orcamentos-total').textContent = dashOrcamentos.total;
-                            document.getElementById('dash-orcamentos-nao-iniciado').textContent = dashOrcamentos.nao_iniciado;
-                            document.getElementById('dash-orcamentos-em-andamento').textContent = dashOrcamentos.em_andamento;
-                            document.getElementById('dash-orcamentos-concluido').textContent = dashOrcamentos.concluido;
-
-                        } else {
-                            alert('Erro ao atualizar o status: ' + data.message);
-                        }
-                    } else {
-                        alert('Ocorreu um erro na resposta do servidor.');
-                    }
-                };
-
-                xhr.onerror = function() {
-                    alert('Ocorreu um erro de comunicação com o servidor.');
-                };
-
-                xhr.send(JSON.stringify({ status: newStatus }));
-            });
+            // Remove listeners anteriores para evitar duplicação
+            option.removeEventListener('click', handleStatusClick);
+            option.addEventListener('click', handleStatusClick);
         });
+        
+        function handleStatusClick(event) {
+            event.preventDefault();
+            const entryId = this.dataset.id;
+            const newStatus = this.dataset.status;
 
-        // Script para atualização em tempo real usando Server-Sent Events
-        if (typeof(EventSource) !== "undefined") {
-            var eventSource = new EventSource('/stream');
-            eventSource.onmessage = function(event) {
-                try {
-                    var data = JSON.parse(event.data);
-                    
-                    // Atualiza o dashboard de Pedidos
-                    if (data.pedidos) {
-                        document.getElementById('dash-pedidos-total').textContent = data.pedidos.total;
-                        document.getElementById('dash-pedidos-nao-iniciado').textContent = data.pedidos.nao_iniciado;
-                        document.getElementById('dash-pedidos-em-andamento').textContent = data.pedidos.em_andamento;
-                        document.getElementById('dash-pedidos-concluido').textContent = data.pedidos.concluido;
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/atualizar-status/' + entryId, true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+
+            xhr.onload = function() {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data.success) {
+                        // Atualiza o botão de status na tabela
+                        const button = document.getElementById('status-btn-' + entryId);
+                        if (button) {
+                            button.textContent = newStatus;
+                            button.classList.remove('btn-danger', 'btn-warning', 'btn-success', 'btn-secondary');
+                            button.classList.add(colorMap[newStatus] || 'btn-secondary');
+                        }
+
+                        // Atualiza dashboards
+                        updateDashboards(data.dashboard);
+
+                    } else {
+                        alert('Erro ao atualizar o status: ' + data.message);
                     }
-                    
-                    // Atualiza o dashboard de Orçamentos
-                    if (data.orcamentos) {
-                        document.getElementById('dash-orcamentos-total').textContent = data.orcamentos.total;
-                        document.getElementById('dash-orcamentos-nao-iniciado').textContent = data.orcamentos.nao_iniciado;
-                        document.getElementById('dash-orcamentos-em-andamento').textContent = data.orcamentos.em_andamento;
-                        document.getElementById('dash-orcamentos-concluido').textContent = data.orcamentos.concluido;
-                    }
-                    
-                    console.log('Dashboard atualizado em tempo real');
-                } catch (e) {
-                    console.error('Erro ao processar dados SSE:', e);
+                } else {
+                    alert('Ocorreu um erro na resposta do servidor.');
                 }
             };
-            
-            eventSource.onerror = function(event) {
-                console.log('Erro na conexão SSE, tentando reconectar...');
+
+            xhr.onerror = function() {
+                alert('Ocorreu um erro de comunicação com o servidor.');
             };
-        } else {
-            console.log('Seu navegador não suporta Server-Sent Events.');
+
+            xhr.send(JSON.stringify({ status: newStatus }));
         }
-    });
+    }
+    
+    // Função auxiliar para atualizar dashboards
+    function updateDashboards(dashboard) {
+        if (dashboard && dashboard.pedidos) {
+            document.getElementById('dash-pedidos-total').textContent = dashboard.pedidos.total;
+            document.getElementById('dash-pedidos-nao-iniciado').textContent = dashboard.pedidos.nao_iniciado;
+            document.getElementById('dash-pedidos-em-andamento').textContent = dashboard.pedidos.em_andamento;
+            document.getElementById('dash-pedidos-concluido').textContent = dashboard.pedidos.concluido;
+        }
+        
+        if (dashboard && dashboard.orcamentos) {
+            document.getElementById('dash-orcamentos-total').textContent = dashboard.orcamentos.total;
+            document.getElementById('dash-orcamentos-nao-iniciado').textContent = dashboard.orcamentos.nao_iniciado;
+            document.getElementById('dash-orcamentos-em-andamento').textContent = dashboard.orcamentos.em_andamento;
+            document.getElementById('dash-orcamentos-concluido').textContent = dashboard.orcamentos.concluido;
+        }
+    }
+    
+    // Função para atualizar tabelas - Versão revisada e otimizada
+    function updateTables(tablesData) {
+        try {
+            // Validação de entrada
+            if (!tablesData || typeof tablesData !== 'object') {
+                console.warn('Dados de tabelas inválidos recebidos:', tablesData);
+                return;
+            }
+            
+            // Atualiza pedidos se disponível
+            if (tablesData.pedidos_data && Array.isArray(tablesData.pedidos_data)) {
+                console.log(`Atualizando ${tablesData.pedidos_data.length} pedidos`);
+                updatePedidosTable(tablesData.pedidos_data);
+            } else if (tablesData.pedidos_data !== undefined) {
+                console.warn('Dados de pedidos em formato inválido:', tablesData.pedidos_data);
+            }
+            
+            // Atualiza orçamentos se disponível
+            if (tablesData.orcamentos_data && Array.isArray(tablesData.orcamentos_data)) {
+                console.log(`Atualizando ${tablesData.orcamentos_data.length} orçamentos`);
+                updateOrcamentosTable(tablesData.orcamentos_data);
+            } else if (tablesData.orcamentos_data !== undefined) {
+                console.warn('Dados de orçamentos em formato inválido:', tablesData.orcamentos_data);
+            }
+            
+            // Log de sucesso
+            console.log('Atualização de tabelas concluída com sucesso');
+            
+        } catch (error) {
+            console.error('Erro crítico durante atualização das tabelas:', error);
+            // Notifica o usuário sobre o erro
+            if (window.PainelSistema && window.PainelSistema.notifications) {
+                window.PainelSistema.notifications.show('Erro ao atualizar tabelas. Tente recarregar a página.', 'error');
+            }
+        }
+    }
+    
+    // Função para atualizar tabela de pedidos - Versão revisada e otimizada
+    function updatePedidosTable(pedidosData) {
+        try {
+            // Validação de entrada
+            if (!Array.isArray(pedidosData)) {
+                console.error('Dados de pedidos inválidos:', pedidosData);
+                return;
+            }
+            
+            const tableBody = document.querySelector('#pedidos-table tbody');
+            if (!tableBody) {
+                console.error('Elemento tbody da tabela de pedidos não encontrado!');
+                return;
+            }
+            
+            // Limpa o conteúdo atual de forma segura
+            while (tableBody.firstChild) {
+                tableBody.removeChild(tableBody.firstChild);
+            }
+        
+            // Função auxiliar para sanitizar dados
+            const sanitize = (value) => {
+                if (value === null || value === undefined) return '';
+                return String(value).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+            };
+            
+            // Adiciona as novas linhas de forma otimizada
+            const fragment = document.createDocumentFragment();
+            
+            pedidosData.forEach((pedido, index) => {
+                try {
+                    // Validação básica do pedido
+                    if (!pedido || !pedido.id) {
+                        console.warn(`Pedido inválido no índice ${index}:`, pedido);
+                        return;
+                    }
+                    
+                    const row = document.createElement('tr');
+                    
+                    // Monta o HTML da linha de forma mais segura
+                    const cellsHTML = [
+                        // Checkbox
+                        `<input type="checkbox" class="pedido-checkbox" value="${sanitize(pedido.id)}" onchange="updatePedidosBulkActions()">`,
+                        
+                        // Data
+                        sanitize(pedido.data_cadastro || ''),
+                        
+                        // Número do pedido
+                        `<button type="button" class="btn btn-outline-secondary btn-sm" style="color: var(--text-color);" data-toggle="modal" data-target="#detalhesModal-${sanitize(pedido.id)}">
+                            ${sanitize(pedido.numero_pedido || '')}
+                        </button>`,
+                        
+                        // Cliente
+                        pedido.numero_cliente ? 
+                            `<button type="button" class="btn btn-outline-secondary btn-sm" style="color: var(--text-color);" data-toggle="modal" data-target="#clienteDetalhesModal-${sanitize(pedido.cliente_id)}">
+                                ${sanitize(pedido.numero_cliente)}
+                            </button>` : 
+                            `<a href="/novo_cliente/rapido?nome=${encodeURIComponent(pedido.nome_cliente || '')}" class="btn btn-success btn-sm" title="Cadastrar este cliente">
+                                <i class="fas fa-plus"></i>
+                            </a>`,
+                        
+                        // Nome do cliente
+                        sanitize(pedido.nome_cliente || ''),
+                        
+                        // Trabalho
+                        sanitize(pedido.trabalho || ''),
+                        
+                        // Status dropdown
+                        `<div class="dropdown">
+                            <button class="btn ${getStatusButtonColor(pedido.status)} btn-sm dropdown-toggle" type="button" id="status-btn-${sanitize(pedido.id)}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                ${sanitize(pedido.status || 'Não iniciado')}
+                            </button>
+                            <div class="dropdown-menu" aria-labelledby="status-btn-${sanitize(pedido.id)}">
+                                <a class="dropdown-item status-option" href="#" data-id="${sanitize(pedido.id)}" data-status="Não iniciado">Não iniciado</a>
+                                <a class="dropdown-item status-option" href="#" data-id="${sanitize(pedido.id)}" data-status="Em andamento">Em andamento</a>
+                                <a class="dropdown-item status-option" href="#" data-id="${sanitize(pedido.id)}" data-status="Concluído">Concluído</a>
+                            </div>
+                        </div>`,
+                        
+                        // Descrição
+                        sanitize(pedido.descricao || ''),
+                        
+                        // Observações
+                        sanitize(pedido.observacoes || ''),
+                        
+                        // Anexos com drag and drop
+                        (pedido.anexos_count > 0) ? 
+                            `<div class="anexos-cell-container" data-entry-id="${sanitize(pedido.id)}" data-entry-type="pedido" style="display: flex; align-items: center; gap: 8px;">
+                                <div class="drag-drop-zone" style="flex: 1; min-width: 40px; max-width: 60px; padding: 6px; border: 2px dashed #ccc; border-radius: 4px; text-align: center; font-size: 12px; color: #666; cursor: pointer;" title="Arraste arquivos aqui ou clique para selecionar">
+                                    <i class="fas fa-plus"></i>
+                                </div>
+                                <button type="button" class="btn btn-outline-secondary" data-toggle="modal" data-target="#galeriaAnexos-${sanitize(pedido.id)}" style="flex-shrink: 0; min-width: 40px; max-width: 60px; padding: 6px; border-radius: 4px; font-size: 12px; min-height: 32px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-paperclip"></i> ${sanitize(pedido.anexos_count)}
+                                </button>
+                            </div>` : 
+                            `<div class="anexos-cell-container" data-entry-id="${sanitize(pedido.id)}" data-entry-type="pedido">
+                                <div class="drag-drop-zone" style="padding: 8px; border: 2px dashed #ccc; border-radius: 4px; text-align: center; font-size: 12px; color: #666; cursor: pointer; max-width: 60px;" title="Arraste arquivos aqui ou clique para selecionar">
+                                    <i class="fas fa-plus"></i>
+                                </div>
+                            </div>`,
+                        
+                        // Ações
+                        `<div class="d-flex gap-1">
+                            <button type="button" class="btn btn-sm btn-warning" title="Relatório" onclick="openRelatorioModal(${sanitize(pedido.id)}, '${sanitize(pedido.numero_pedido)}', '${sanitize(pedido.data_cadastro)}', '${sanitize(pedido.nome_cliente)}', '${sanitize(pedido.numero_cliente || 'S/N')}', '${sanitize(pedido.trabalho || '')}')">
+                                <i class="fas fa-print"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="archivePedido(${sanitize(pedido.id)})" title="Arquivar">
+                                <i class="fas fa-archive"></i>
+                            </button>
+                            <a href="/editar/${sanitize(pedido.id)}" class="btn btn-sm btn-info" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <button type="button" class="btn btn-sm btn-danger" onclick="deletePedido(${sanitize(pedido.id)})" title="Excluir">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>`
+                    ];
+                    
+                    // Cria as células
+                    cellsHTML.forEach(cellHTML => {
+                        const cell = document.createElement('td');
+                        cell.innerHTML = cellHTML;
+                        row.appendChild(cell);
+                    });
+                    
+                    fragment.appendChild(row);
+                    
+                } catch (error) {
+                    console.error(`Erro ao processar pedido ${pedido.id}:`, error);
+                }
+            });
+            
+            // Adiciona todas as linhas de uma vez
+            tableBody.appendChild(fragment);
+        
+            // Atualiza ações em lote
+            if (typeof updatePedidosBulkActions === 'function') {
+                updatePedidosBulkActions();
+            }
+            
+            // Reinicializa sistema de status para novos elementos
+            if (typeof initializeStatusSystem === 'function') {
+                initializeStatusSystem();
+            }
+            
+            // Inicializa drag and drop para anexos
+            initializeDragDropAnexos();
+            
+            console.log(`Tabela de pedidos atualizada com ${pedidosData.length} registros`);
+            
+        } catch (error) {
+            console.error('Erro crítico ao atualizar tabela de pedidos:', error);
+            
+            // Notifica o usuário sobre o erro
+            if (window.PainelSistema && window.PainelSistema.notifications) {
+                window.PainelSistema.notifications.show('Erro ao atualizar tabela de pedidos. Recarregue a página.', 'error');
+            }
+            
+            // Tenta restaurar estado anterior se possível
+            const tableBody = document.querySelector('#pedidos-table tbody');
+            if (tableBody && tableBody.children.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="11" class="text-center text-muted">Erro ao carregar dados. Recarregue a página.</td></tr>';
+            }
+        }
+    }
+    
+    // Função para atualizar tabela de orçamentos - Versão revisada e otimizada
+    function updateOrcamentosTable(orcamentosData) {
+        try {
+            // Validação de entrada
+            if (!Array.isArray(orcamentosData)) {
+                console.error('Dados de orçamentos inválidos:', orcamentosData);
+                return;
+            }
+            
+            const tableBody = document.querySelector('#orcamentos-table tbody');
+            if (!tableBody) {
+                console.error('Elemento tbody da tabela de orçamentos não encontrado!');
+                return;
+            }
+            
+            // Limpa o conteúdo atual de forma segura
+            while (tableBody.firstChild) {
+                tableBody.removeChild(tableBody.firstChild);
+            }
+            
+            // Função auxiliar para sanitizar dados
+            const sanitize = (value) => {
+                if (value === null || value === undefined) return '';
+                return String(value).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+            };
+            
+            // Adiciona as novas linhas de forma otimizada
+            const fragment = document.createDocumentFragment();
+        
+        // Processa cada orçamento de forma segura
+        orcamentosData.forEach((orcamento, index) => {
+            try {
+                // Validação básica dos dados do orçamento
+                if (!orcamento || !orcamento.id) {
+                    console.warn(`Orçamento inválido no índice ${index}:`, orcamento);
+                    return;
+                }
+                
+                const row = document.createElement('tr');
+                
+                // Criação segura do HTML da linha
+                const cellsHTML = [
+                    `<input type="checkbox" class="orcamento-checkbox" value="${sanitize(orcamento.id)}" onchange="updateOrcamentosBulkActions()">`,
+                    sanitize(orcamento.data_cadastro || ''),
+                    `<button type="button" class="btn btn-outline-secondary btn-sm" style="color: var(--text-color);" data-toggle="modal" data-target="#detalhesModal-${sanitize(orcamento.id)}">${sanitize(orcamento.numero_orcamento || '')}</button>`,
+                    orcamento.numero_cliente ? 
+                        `<button type="button" class="btn btn-outline-secondary btn-sm" style="color: var(--text-color);" data-toggle="modal" data-target="#clienteDetalhesModal-${sanitize(orcamento.cliente_id)}">${sanitize(orcamento.numero_cliente)}</button>` :
+                        `<a href="/novo_cliente/rapido?nome=${encodeURIComponent(orcamento.nome_cliente || '')}" class="btn btn-success btn-sm" title="Cadastrar este cliente"><i class="fas fa-plus"></i></a>`,
+                    sanitize(orcamento.nome_cliente || ''),
+                    sanitize(orcamento.trabalho || ''),
+                    `<div class="dropdown">
+                        <button class="btn ${getStatusButtonColor(orcamento.status)} btn-sm dropdown-toggle" type="button" id="status-btn-${sanitize(orcamento.id)}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            ${sanitize(orcamento.status || 'Não iniciado')}
+                        </button>
+                        <div class="dropdown-menu" aria-labelledby="status-btn-${sanitize(orcamento.id)}">
+                            <a class="dropdown-item status-option" href="#" data-id="${sanitize(orcamento.id)}" data-status="Não iniciado">Não iniciado</a>
+                            <a class="dropdown-item status-option" href="#" data-id="${sanitize(orcamento.id)}" data-status="Em andamento">Em andamento</a>
+                            <a class="dropdown-item status-option" href="#" data-id="${sanitize(orcamento.id)}" data-status="Concluído">Concluído</a>
+                        </div>
+                    </div>`,
+                    sanitize(orcamento.descricao || ''),
+                    sanitize(orcamento.observacoes || ''),
+                    (orcamento.anexos_count > 0) ? 
+                         `<div class="anexos-cell-container" data-entry-id="${sanitize(orcamento.id)}" data-entry-type="orcamento" style="display: flex; align-items: center; gap: 8px;">
+                             <div class="drag-drop-zone" style="flex: 1; min-width: 40px; max-width: 60px; padding: 6px; border: 2px dashed #ccc; border-radius: 4px; text-align: center; font-size: 12px; color: #666; cursor: pointer;" title="Arraste arquivos aqui ou clique para selecionar">
+                                 <i class="fas fa-plus"></i>
+                             </div>
+                             <button type="button" class="btn btn-outline-secondary" data-toggle="modal" data-target="#galeriaAnexos-${sanitize(orcamento.id)}" style="flex-shrink: 0; min-width: 40px; max-width: 60px; padding: 6px; border-radius: 4px; font-size: 12px; min-height: 32px; display: flex; align-items: center; justify-content: center;">
+                                 <i class="fas fa-paperclip"></i> ${sanitize(orcamento.anexos_count)}
+                             </button>
+                         </div>` :
+                         `<div class="anexos-cell-container" data-entry-id="${sanitize(orcamento.id)}" data-entry-type="orcamento">
+                             <div class="drag-drop-zone" style="padding: 8px; border: 2px dashed #ccc; border-radius: 4px; text-align: center; font-size: 12px; color: #666; cursor: pointer; max-width: 60px;" title="Arraste arquivos aqui ou clique para selecionar">
+                                 <i class="fas fa-plus"></i>
+                             </div>
+                         </div>`,
+                    `<div class="d-flex gap-1">
+                        <button type="button" class="btn btn-sm btn-success" onclick="convertToPedido(${sanitize(orcamento.id)})" title="Converter em Pedido"><i class="fas fa-exchange-alt"></i></button>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="archiveOrcamento(${sanitize(orcamento.id)})" title="Arquivar"><i class="fas fa-archive"></i></button>
+                        <a href="/editar/${sanitize(orcamento.id)}" class="btn btn-sm btn-info" title="Editar"><i class="fas fa-edit"></i></a>
+                        <button type="button" class="btn btn-sm btn-danger" onclick="deleteOrcamento(${sanitize(orcamento.id)})" title="Excluir"><i class="fas fa-trash"></i></button>
+                    </div>`
+                ];
+                
+                // Adiciona as células à linha
+                cellsHTML.forEach(cellHTML => {
+                    const cell = document.createElement('td');
+                    cell.innerHTML = cellHTML;
+                    row.appendChild(cell);
+                });
+                
+                fragment.appendChild(row);
+                
+            } catch (error) {
+                console.error(`Erro ao processar orçamento ${orcamento?.id || index}:`, error);
+            }
+        });
+        
+        // Adiciona todas as linhas de uma vez
+        tableBody.appendChild(fragment);
+        
+        // Atualiza ações em lote e reinicializa sistema de status
+        try {
+            if (typeof updateOrcamentosBulkActions === 'function') {
+                updateOrcamentosBulkActions();
+            }
+            if (typeof initializeStatusSystem === 'function') {
+                initializeStatusSystem();
+            }
+            
+            // Inicializa drag and drop para anexos
+            initializeDragDropAnexos();
+            
+        } catch (error) {
+            console.error('Erro ao inicializar sistemas auxiliares:', error);
+        }
+        
+        console.log(`Tabela de orçamentos atualizada com ${orcamentosData.length} registros`);
+        
+        } catch (error) {
+            console.error('Erro crítico na atualização da tabela de orçamentos:', error);
+            
+            // Notifica o usuário sobre o erro
+            if (typeof showNotification === 'function') {
+                showNotification('Erro ao carregar orçamentos. Tente recarregar a página.', 'error');
+            }
+            
+            // Fallback: exibe mensagem de erro na tabela
+            const tableBody = document.querySelector('#orcamentos-table tbody');
+            if (tableBody) {
+                tableBody.innerHTML = '<tr><td colspan="11" class="text-center text-danger">Erro ao carregar dados dos orçamentos</td></tr>';
+            }
+        }
+    }
+    
+    // Função auxiliar para obter cor do status
+    function getStatusColor(status) {
+        const statusColors = {
+            'Não Iniciado': 'bg-secondary',
+            'Em Andamento': 'bg-warning text-dark',
+            'Concluído': 'bg-success',
+            'Arquivado': 'bg-dark',
+            'Cancelado': 'bg-danger'
+        };
+        return statusColors[status] || 'bg-secondary';
+    }
+    
+    // Sistema de Drag and Drop para Anexos
+    function initializeDragDropAnexos() {
+        try {
+            console.log('Inicializando sistema de drag and drop para anexos...');
+            
+            // Seleciona todas as zonas de drag and drop
+            const dropZones = document.querySelectorAll('.drag-drop-zone');
+            
+            dropZones.forEach(zone => {
+                // Remove listeners anteriores para evitar duplicação
+                zone.removeEventListener('dragover', handleDragOver);
+                zone.removeEventListener('dragenter', handleDragEnter);
+                zone.removeEventListener('dragleave', handleDragLeave);
+                zone.removeEventListener('drop', handleDrop);
+                zone.removeEventListener('click', handleZoneClick);
+                
+                // Adiciona novos listeners
+                zone.addEventListener('dragover', handleDragOver);
+                zone.addEventListener('dragenter', handleDragEnter);
+                zone.addEventListener('dragleave', handleDragLeave);
+                zone.addEventListener('drop', handleDrop);
+                zone.addEventListener('click', handleZoneClick);
+            });
+            
+            console.log(`Drag and drop inicializado para ${dropZones.length} zonas`);
+            
+        } catch (error) {
+            console.error('Erro ao inicializar drag and drop:', error);
+        }
+    }
+    
+    // Handlers para eventos de drag and drop
+    function handleDragOver(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.style.borderColor = '#007bff';
+        this.style.backgroundColor = '#f8f9fa';
+    }
+    
+    function handleDragEnter(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.style.borderColor = '#007bff';
+        this.style.backgroundColor = '#f8f9fa';
+    }
+    
+    function handleDragLeave(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.style.borderColor = '#ccc';
+        this.style.backgroundColor = 'transparent';
+    }
+    
+    function handleDrop(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Restaura estilo visual
+        this.style.borderColor = '#ccc';
+        this.style.backgroundColor = 'transparent';
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            const container = this.closest('.anexos-cell-container');
+            const entryId = container.getAttribute('data-entry-id');
+            const entryType = container.getAttribute('data-entry-type');
+            
+            uploadAnexosFiles(files, entryId, entryType, this);
+        }
+    }
+    
+    function handleZoneClick(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const container = this.closest('.anexos-cell-container');
+        const entryId = container.getAttribute('data-entry-id');
+        const entryType = container.getAttribute('data-entry-type');
+        
+        // Cria input file temporário
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.multiple = true;
+        fileInput.accept = '.pdf,.jpg,.jpeg,.png,.gif,.doc,.docx,.xls,.xlsx,.txt';
+        
+        fileInput.onchange = (event) => {
+            const files = event.target.files;
+            if (files.length > 0) {
+                uploadAnexosFiles(files, entryId, entryType, this);
+            }
+        };
+        
+        fileInput.click();
+    }
+    
+    // Função para upload de arquivos de anexos
+    async function uploadAnexosFiles(files, entryId, entryType, dropZone) {
+        try {
+            console.log(`Iniciando upload de ${files.length} arquivo(s) para ${entryType} ${entryId}`);
+            
+            // Mostra indicador de carregamento
+            const originalContent = dropZone.innerHTML;
+            dropZone.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+            dropZone.style.pointerEvents = 'none';
+            
+            // Prepara FormData
+            const formData = new FormData();
+            for (let i = 0; i < files.length; i++) {
+                formData.append('anexos', files[i]);
+            }
+            formData.append('entrada_id', entryId);
+            
+            // Envia arquivos
+            const response = await fetch('/upload_anexos', {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                console.log('Upload realizado com sucesso:', result);
+                
+                // Mostra notificação de sucesso
+                if (typeof showUpdateNotification === 'function') {
+                    showUpdateNotification(`${files.length} arquivo(s) adicionado(s) com sucesso!`, 'success');
+                }
+                
+                // Força atualização da tabela para refletir os novos anexos
+                if (window.PAINEL_SYSTEM && typeof window.PAINEL_SYSTEM.fetchUpdatedData === 'function') {
+                    window.PAINEL_SYSTEM.isManualRefresh = true;
+                    await window.PAINEL_SYSTEM.fetchUpdatedData();
+                }
+                
+            } else {
+                throw new Error(result.message || 'Erro no upload');
+            }
+            
+        } catch (error) {
+            console.error('Erro no upload de anexos:', error);
+            
+            // Mostra notificação de erro
+            if (typeof showUpdateNotification === 'function') {
+                showUpdateNotification('Erro ao enviar arquivos. Tente novamente.', 'error');
+            }
+            
+        } finally {
+            // Restaura conteúdo original
+            dropZone.innerHTML = originalContent;
+            dropZone.style.pointerEvents = 'auto';
+        }
+    }
+    
+    // Função auxiliar para obter cor do botão de status
+    function getStatusButtonColor(status) {
+        const statusColors = {
+            'Não iniciado': 'btn-danger',
+            'Em andamento': 'btn-warning',
+            'Concluído': 'btn-success',
+            'Arquivado': 'btn-dark',
+            'Cancelado': 'btn-danger'
+        };
+        return statusColors[status] || 'btn-secondary';
+    }
+    
+    // Função para atualizar status de conexão
+    function updateConnectionStatus(isConnected, serverTime = null) {
+        const statusIndicator = document.getElementById('connection-status');
+        const lastUpdateElement = document.getElementById('last-update-time');
+        
+        if (statusIndicator) {
+            if (isConnected) {
+                statusIndicator.className = 'badge bg-success';
+                statusIndicator.textContent = 'Conectado';
+            } else {
+                statusIndicator.className = 'badge bg-danger';
+                statusIndicator.textContent = 'Desconectado';
+            }
+        }
+        
+        if (lastUpdateElement) {
+            const now = new Date();
+            lastUpdateElement.textContent = 'Última atualização: ' + now.toLocaleTimeString();
+            if (serverTime) {
+                lastUpdateElement.title = 'Hora do servidor: ' + serverTime;
+            }
+        }
+    }
+    
+    // Função para mostrar notificações de atualização
+    function showUpdateNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = 'alert alert-' + type + ' alert-dismissible fade show position-fixed';
+        notification.style.cssText = 'bottom: 20px; right: 20px; z-index: 9999; min-width: 200px; max-width: 250px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); border-radius: 6px; animation: slideInRight 0.3s ease-out; font-size: 12px; padding: 8px 12px;';
+        notification.innerHTML = message + '<button type="button" class="btn-close" data-bs-dismiss="alert" style="font-size: 10px; padding: 2px;"></button>';
+        
+        document.body.appendChild(notification);
+        
+        // Auto-remover após 2 segundos com animação (tempo reduzido)
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.style.animation = 'slideOutRight 0.3s ease-in';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        notification.remove();
+                    }
+                }, 300);
+            }
+        }, 2000);
+    }
+    
+    // Sistema de atualização automática - Versão revisada e otimizada
+    function initializeAutoUpdate() {
+        try {
+            console.log('Iniciando sistema de atualização automática...');
+            
+            // Validação do sistema global
+            if (!window.PAINEL_SYSTEM) {
+                console.error('PAINEL_SYSTEM não está disponível!');
+                return false;
+            }
+            
+            // Inicializa variáveis do sistema de forma segura
+            Object.assign(window.PAINEL_SYSTEM, {
+                autoUpdateActive: true,
+                updateInterval: 30000,
+                failedAttempts: 0,
+                maxFailedAttempts: 5,
+                connectionStatus: 'connecting',
+                lastData: null,
+                isManualRefresh: false,
+                lastUpdateTime: null,
+                retryDelay: 5000
+            });
+            
+            // Limpa intervalo anterior se existir
+            if (window.PAINEL_SYSTEM.autoUpdateInterval) {
+                clearInterval(window.PAINEL_SYSTEM.autoUpdateInterval);
+                window.PAINEL_SYSTEM.autoUpdateInterval = null;
+            }
+        
+        // Função para buscar dados atualizados - Versão otimizada
+        async function fetchUpdatedData() {
+            // Verifica se o sistema ainda está ativo
+            if (!window.PAINEL_SYSTEM?.autoUpdateActive) {
+                console.log('Sistema de atualização pausado');
+                return;
+            }
+            
+            console.log('Iniciando requisição para /api/dashboard_data');
+            
+            // Atualiza status para 'carregando' de forma segura
+            const statusIndicator = document.getElementById('connection-status');
+            if (statusIndicator) {
+                statusIndicator.className = 'badge bg-warning';
+                statusIndicator.textContent = 'Carregando...';
+            }
+            
+            try {
+                // Configuração da requisição com timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+                
+                const response = await fetch('/api/dashboard_data', {
+                    method: 'GET',
+                    credentials: 'same-origin',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Cache-Control': 'no-cache'
+                    },
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                console.log('Resposta recebida:', response.status, response.statusText);
+                
+                // Tratamento de redirecionamento (sessão expirada)
+                if (response.status === 302 || response.redirected) {
+                    console.error('Redirecionamento detectado - problema de autenticação');
+                    updateConnectionStatus(false);
+                    if (typeof showUpdateNotification === 'function') {
+                        showUpdateNotification('Sessão expirada. Faça login novamente.', 'warning');
+                    }
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 3000);
+                    return;
+                }
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                // Validação dos dados recebidos
+                if (!data || typeof data !== 'object') {
+                    throw new Error('Dados inválidos recebidos da API');
+                }
+                
+                console.log('Dados recebidos da API:', data.success ? 'Sucesso' : 'Erro');
+                
+                if (data.success) {
+                    // Detecta mudanças nos dados
+                    const hasChanges = detectDataChanges(data);
+                    
+                    // Atualiza dashboards de forma segura
+                    if (data.dashboard && typeof updateDashboards === 'function') {
+                        updateDashboards(data.dashboard);
+                    }
+                    
+                    // Atualiza tabelas se disponíveis
+                    if (data.tables && typeof updateTables === 'function') {
+                        console.log('Atualizando tabelas...');
+                        updateTables(data.tables);
+                    } else {
+                        console.warn('Nenhum dado de tabela recebido ou função updateTables não disponível!');
+                    }
+                    
+                    // Atualiza indicadores de status
+                    if (typeof updateConnectionStatus === 'function') {
+                        updateConnectionStatus(true, data.server_time);
+                    }
+                    
+                    // Mostra notificação apenas se for atualização manual
+                    if (window.PAINEL_SYSTEM.isManualRefresh && typeof showUpdateNotification === 'function') {
+                        if (hasChanges) {
+                            showUpdateNotification('Dados atualizados com sucesso!', 'success');
+                        } else {
+                            showUpdateNotification('Dados já estão atualizados', 'info');
+                        }
+                        window.PAINEL_SYSTEM.isManualRefresh = false;
+                    }
+                    
+                    // Armazena dados para comparação futura
+                    window.PAINEL_SYSTEM.lastData = JSON.stringify(data);
+                    window.PAINEL_SYSTEM.lastUpdateTime = new Date();
+                    window.PAINEL_SYSTEM.connectionStatus = 'connected';
+                    window.PAINEL_SYSTEM.failedAttempts = 0;
+                    
+                } else {
+                    throw new Error(data.message || 'Resposta inválida da API');
+                }
+                
+            } catch (error) {
+                console.error('Erro na atualização automática:', error);
+                
+                // Tratamento específico para diferentes tipos de erro
+                if (error.name === 'AbortError') {
+                    console.warn('Requisição cancelada por timeout');
+                } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                    console.error('Erro de rede ou conectividade');
+                }
+                
+                handleUpdateError(error);
+            }
+        }
+        
+        // Função para detectar mudanças nos dados
+        function detectDataChanges(newData) {
+            if (!window.PAINEL_SYSTEM.lastData) {
+                return false; // Primeira execução
+            }
+            
+            const lastDataStr = window.PAINEL_SYSTEM.lastData;
+            const newDataStr = JSON.stringify(newData);
+            
+            return lastDataStr !== newDataStr;
+        }
+        
+        // Função para lidar com erros de atualização - Versão otimizada
+        function handleUpdateError(error = null) {
+            window.PAINEL_SYSTEM.failedAttempts = (window.PAINEL_SYSTEM.failedAttempts || 0) + 1;
+            window.PAINEL_SYSTEM.connectionStatus = 'disconnected';
+            window.PAINEL_SYSTEM.lastErrorTime = new Date();
+            
+            // Atualiza status de conexão de forma segura
+            if (typeof updateConnectionStatus === 'function') {
+                updateConnectionStatus(false);
+            }
+            
+            // Determina o tipo de erro para melhor tratamento
+            let errorType = 'unknown';
+            let userMessage = 'Problemas de conexão detectados';
+            
+            if (error) {
+                if (error.name === 'AbortError') {
+                    errorType = 'timeout';
+                    userMessage = 'Timeout na conexão com o servidor';
+                } else if (error.name === 'TypeError') {
+                    errorType = 'network';
+                    userMessage = 'Erro de rede ou conectividade';
+                } else if (error.message?.includes('HTTP')) {
+                    errorType = 'http';
+                    userMessage = 'Erro do servidor';
+                }
+            }
+            
+            // Mostra notificação de erro após várias tentativas falhadas
+            if (window.PAINEL_SYSTEM.failedAttempts >= 3 && typeof showUpdateNotification === 'function') {
+                showUpdateNotification(userMessage, 'warning');
+            }
+            
+            // Implementa backoff exponencial para reconexão
+            const maxAttempts = window.PAINEL_SYSTEM.maxFailedAttempts || 5;
+            if (window.PAINEL_SYSTEM.failedAttempts >= maxAttempts) {
+                const backoffDelay = Math.min(60000, window.PAINEL_SYSTEM.retryDelay * Math.pow(2, window.PAINEL_SYSTEM.failedAttempts - maxAttempts));
+                console.warn(`Muitas tentativas falharam. Aumentando intervalo para ${backoffDelay}ms`);
+                
+                if (typeof adjustUpdateInterval === 'function') {
+                    adjustUpdateInterval(backoffDelay);
+                }
+            }
+            
+            console.error(`Erro de atualização (tentativa ${window.PAINEL_SYSTEM.failedAttempts}/${maxAttempts}):`, {
+                type: errorType,
+                message: error?.message || 'Erro desconhecido',
+                timestamp: new Date().toISOString()
+            });
+        }
+        
+        // Torna fetchUpdatedData disponível globalmente
+        window.PAINEL_SYSTEM.fetchUpdatedData = fetchUpdatedData;
+        
+        // Executa primeira atualização imediatamente
+        try {
+            fetchUpdatedData();
+        } catch (error) {
+            console.error('Erro na primeira atualização:', error);
+        }
+        
+        // Configura atualização automática com intervalo configurado
+        window.PAINEL_SYSTEM.autoUpdateInterval = setInterval(fetchUpdatedData, window.PAINEL_SYSTEM.updateInterval);
+        
+        console.log(`Sistema de atualização automática ativo (${window.PAINEL_SYSTEM.updateInterval/1000}s)`);
+        return true;
+        
+        } catch (error) {
+            console.error('Erro crítico ao inicializar sistema de atualização automática:', error);
+            
+            // Notifica o usuário sobre o erro crítico
+            if (typeof showUpdateNotification === 'function') {
+                showUpdateNotification('Erro ao inicializar sistema de atualização. Recarregue a página.', 'error');
+            }
+            
+            return false;
+        }
+    }
+    
+    // Função para ajustar intervalo de atualização (escopo global)
+    function adjustUpdateInterval(newInterval) {
+        if (window.PAINEL_SYSTEM.autoUpdateInterval) {
+            clearInterval(window.PAINEL_SYSTEM.autoUpdateInterval);
+        }
+        
+        window.PAINEL_SYSTEM.autoUpdateInterval = setInterval(window.PAINEL_SYSTEM.fetchUpdatedData, newInterval);
+        window.PAINEL_SYSTEM.updateInterval = newInterval;
+        console.log('Intervalo de atualização ajustado para ' + newInterval + 'ms');
+    }
+    
+    // Função para pausar/retomar atualização automática (escopo global)
+    function toggleAutoUpdate() {
+        const button = document.getElementById('toggle-auto-update');
+        
+        if (window.PAINEL_SYSTEM.autoUpdateActive) {
+            // Pausar
+            if (window.PAINEL_SYSTEM.autoUpdateInterval) {
+                clearInterval(window.PAINEL_SYSTEM.autoUpdateInterval);
+            }
+            window.PAINEL_SYSTEM.autoUpdateActive = false;
+            button.innerHTML = '<i class="fas fa-play"></i> Retomar Atualização';
+            button.className = 'btn btn-sm btn-outline-success';
+        } else {
+            // Retomar
+            const frequency = parseInt(document.getElementById('update-frequency').value);
+            window.PAINEL_SYSTEM.autoUpdateInterval = setInterval(window.PAINEL_SYSTEM.fetchUpdatedData, frequency);
+            window.PAINEL_SYSTEM.autoUpdateActive = true;
+            button.innerHTML = '<i class="fas fa-pause"></i> Pausar Atualização';
+            button.className = 'btn btn-sm btn-outline-primary';
+        }
+    }
+    
+    // Função para alterar frequência de atualização (escopo global)
+    function changeUpdateFrequency() {
+        const frequency = parseInt(document.getElementById('update-frequency').value);
+        
+        if (window.PAINEL_SYSTEM.autoUpdateActive) {
+            adjustUpdateInterval(frequency);
+        } else {
+            window.PAINEL_SYSTEM.updateInterval = frequency;
+        }
+    }
+    
+    // Função para atualização manual (escopo global)
+    function manualRefresh() {
+        showUpdateNotification('Atualizando dados manualmente...', 'info');
+        window.PAINEL_SYSTEM.isManualRefresh = true;
+        window.PAINEL_SYSTEM.fetchUpdatedData();
+    }
+    
+    // Função para obter a classe CSS baseada no status
+    function getStatusClass(status) {
+        if (status === 'Não iniciado') {
+            return 'status-nao-iniciado';
+        } else if (status === 'Em andamento') {
+            return 'status-em-andamento';
+        } else if (status === 'Concluído') {
+            return 'status-concluido';
+        }
+        return '';
+    }
+
+    
+    // Função para proteger modais contra sobreposições
+    function protectModals() {
+        // Protege modais de descrição de cliente
+        document.querySelectorAll('[data-toggle="modal"]').forEach(trigger => {
+            if (!trigger.hasAttribute('data-modal-protected')) {
+                trigger.setAttribute('data-modal-protected', 'true');
+                
+                // Garante que o modal funcione corretamente
+                trigger.addEventListener('click', function(e) {
+                    const targetModal = document.querySelector(this.getAttribute('data-target'));
+                    if (targetModal) {
+                        // Força a exibição do modal
+                        setTimeout(() => {
+                            if (window.jQuery && window.jQuery.fn.modal) {
+                                $(targetModal).modal('show');
+                            }
+                        }, 10);
+                    }
+                });
+            }
+        });
+        
+        // Protege conteúdo de anexos
+        document.querySelectorAll('.anexos-cell').forEach(cell => {
+            if (!cell.hasAttribute('data-content-protected')) {
+                cell.setAttribute('data-content-protected', 'true');
+                // Preserva o conteúdo original
+                cell.setAttribute('data-original-content', cell.innerHTML);
+            }
+        });
+    }
     
     // Funções para seleção em massa - PEDIDOS
     function toggleAllPedidos(selectAllCheckbox) {
@@ -655,7 +2387,7 @@
             return;
         }
         
-        if (confirm(`Tem certeza que deseja arquivar ${ids.length} pedido(s) selecionado(s)?`)) {
+        if (confirm('Tem certeza que deseja arquivar ' + ids.length + ' pedido(s) selecionado(s)?')) {
             bulkAction('archive', ids, 'pedidos');
         }
     }
@@ -669,7 +2401,7 @@
             return;
         }
         
-        if (confirm(`ATENÇÃO: Esta ação irá excluir permanentemente ${ids.length} pedido(s) selecionado(s). Tem certeza?`)) {
+        if (confirm('ATENÇÃO: Esta ação irá excluir permanentemente ' + ids.length + ' pedido(s) selecionado(s). Tem certeza?')) {
             bulkAction('delete', ids, 'pedidos');
         }
     }
@@ -684,7 +2416,7 @@
             return;
         }
         
-        if (confirm(`Tem certeza que deseja arquivar ${ids.length} orçamento(s) selecionado(s)?`)) {
+        if (confirm('Tem certeza que deseja arquivar ' + ids.length + ' orçamento(s) selecionado(s)?')) {
             bulkAction('archive', ids, 'orcamentos');
         }
     }
@@ -698,7 +2430,7 @@
             return;
         }
         
-        if (confirm(`ATENÇÃO: Esta ação irá excluir permanentemente ${ids.length} orçamento(s) selecionado(s). Tem certeza?`)) {
+        if (confirm('ATENÇÃO: Esta ação irá excluir permanentemente ' + ids.length + ' orçamento(s) selecionado(s). Tem certeza?')) {
             bulkAction('delete', ids, 'orcamentos');
         }
     }
@@ -732,5 +2464,863 @@
             type: type
         }));
     }
-    </script>
+    
+    // Funções individuais para pedidos
+    function archivePedido(id) {
+        if (confirm('Tem certeza que deseja arquivar este pedido?')) {
+            bulkAction('archive', [id], 'pedidos');
+        }
+    }
+    
+    function deletePedido(id) {
+        if (confirm('ATENÇÃO: Esta ação irá excluir permanentemente este pedido. Tem certeza?')) {
+            bulkAction('delete', [id], 'pedidos');
+        }
+    }
+    
+    // Funções individuais para orçamentos
+    function archiveOrcamento(id) {
+        if (confirm('Tem certeza que deseja arquivar este orçamento?')) {
+            bulkAction('archive', [id], 'orcamentos');
+        }
+    }
+    
+    function deleteOrcamento(id) {
+        if (confirm('ATENÇÃO: Esta ação irá excluir permanentemente este orçamento. Tem certeza?')) {
+            bulkAction('delete', [id], 'orcamentos');
+        }
+    }
+    
+    function convertToPedido(id) {
+        if (confirm('Tem certeza que deseja converter este orçamento em pedido?')) {
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/convert-to-pedido', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            
+            xhr.onload = function() {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data.success) {
+                        alert('Orçamento convertido em pedido com sucesso!');
+                        location.reload();
+                    } else {
+                        alert('Erro: ' + (data.message || 'Ocorreu um erro desconhecido.'));
+                    }
+                } else {
+                    alert('Erro de comunicação com o servidor.');
+                }
+            };
+            
+            xhr.onerror = function() {
+                alert('Erro de comunicação com o servidor.');
+            };
+            
+            xhr.send(JSON.stringify({
+                id: id
+            }));
+        }
+    }
+    
+    // Funcionalidades para controles de imagem
+    document.addEventListener('DOMContentLoaded', function() {
+        // Zoom in
+         document.addEventListener('click', function(e) {
+             if (e.target.closest('.zoom-in')) {
+                 const carouselItem = e.target.closest('.carousel-item');
+                 const img = carouselItem.querySelector('.panzoom-image');
+                 if (img && img.panzoom) {
+                     img.panzoom.zoomIn();
+                 }
+             }
+         });
+         
+         // Zoom out
+         document.addEventListener('click', function(e) {
+             if (e.target.closest('.zoom-out')) {
+                 const carouselItem = e.target.closest('.carousel-item');
+                 const img = carouselItem.querySelector('.panzoom-image');
+                 if (img && img.panzoom) {
+                     img.panzoom.zoomOut();
+                 }
+             }
+         });
+         
+         // Reset de zoom
+         document.addEventListener('click', function(e) {
+             if (e.target.closest('.zoom-reset')) {
+                 const carouselItem = e.target.closest('.carousel-item');
+                 const img = carouselItem.querySelector('.panzoom-image');
+                 if (img && img.panzoom) {
+                     img.panzoom.reset();
+                     img.dataset.rotation = '0';
+                 }
+             }
+         });
+        
+        // Download de imagem
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.download-image')) {
+                const button = e.target.closest('.download-image');
+                const filename = button.getAttribute('data-filename');
+                const link = document.createElement('a');
+                link.href = '/uploads/' + filename;
+                link.download = filename;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        });
+        
+        // Impressão de imagem
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.print-image')) {
+                const button = e.target.closest('.print-image');
+                const filename = button.getAttribute('data-filename');
+                const imageUrl = '/uploads/' + filename;
+                
+                // Criar uma nova janela para impressão
+                const printWindow = window.open('', '_blank');
+                
+                // Criar documento HTML usando DOM
+                printWindow.document.write('<!DOCTYPE html>');
+                printWindow.document.write('<html><head>');
+                printWindow.document.write('<title>Imprimir - ' + filename + '</title>');
+                printWindow.document.write('<style>');
+                printWindow.document.write('body { margin: 0; padding: 20px; text-align: center; }');
+                printWindow.document.write('img { max-width: 100%; max-height: 90vh; object-fit: contain; }');
+                printWindow.document.write('@media print { body { margin: 0; padding: 0; } img { max-width: 100%; max-height: 100vh; } }');
+                printWindow.document.write('</style>');
+                printWindow.document.write('</head><body>');
+                printWindow.document.write('<img src="' + imageUrl + '" alt="' + filename + '">');
+                printWindow.document.write('<script>window.onload = function() { window.print(); window.close(); };<\/script>');
+                printWindow.document.write('</body></html>');
+                printWindow.document.close();
+            }
+        });
+    });
+    
+    // Função global para gerar relatório
+    window.gerarRelatorio = async function(entradaId) {
+        // Coletar dados do formulário
+        const data = document.getElementById('relatorio-data-' + entradaId).value;
+        const numeroPedido = document.getElementById('relatorio-numero-pedido-' + entradaId).value;
+        const numeroCliente = document.getElementById('relatorio-numero-cliente-' + entradaId).value;
+        const nomeCliente = document.getElementById('relatorio-nome-cliente-' + entradaId).value;
+        const obra = document.getElementById('relatorio-obra-' + entradaId).value;
+        
+        // Coletar anexos selecionados
+        const anexosSelecionados = [];
+        const anexosData = [];
+        const checkboxes = document.querySelectorAll('#relatorioModal-' + entradaId + ' input[name="anexos_selecionados"]:checked');
+        
+        // Buscar dados dos anexos selecionados
+        try {
+            const response = await fetch('/api/entrada/' + entradaId + '/anexos');
+            const result = await response.json();
+            
+            if (result.success) {
+                checkboxes.forEach(checkbox => {
+                    const anexoId = parseInt(checkbox.value);
+                    const anexo = result.anexos.find(a => a.id === anexoId);
+                    if (anexo) {
+                        anexosSelecionados.push(anexoId);
+                        anexosData.push(anexo);
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Erro ao buscar anexos:', error);
+        }
+        
+        // Fechar modal de configuração
+        $('#relatorioModal-' + entradaId).modal('hide');
+        
+        // Criar modal de visualização do relatório
+        criarModalRelatorio({
+            entradaId,
+            data,
+            numeroPedido,
+            numeroCliente,
+            nomeCliente,
+            obra,
+            anexos: anexosData
+        });
+    };
+
+    // Função para gerar relatório
+    async function openRelatorioModal(entradaId, numeroPedido, dataRegistro, clienteNome, clienteNumero, obra) {
+        // Remove modal existente se houver
+        const existingModal = document.getElementById('relatorioModal-' + entradaId);
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        // Formatar data do formato dd/mm/yyyy para yyyy-mm-dd
+        let dataFormatada = '';
+        if (dataRegistro) {
+            try {
+                const parts = dataRegistro.split('/');
+                if (parts.length === 3) {
+                    dataFormatada = parts[2] + '-' + parts[1].padStart(2, '0') + '-' + parts[0].padStart(2, '0');
+                } else {
+                    dataFormatada = dataRegistro;
+                }
+            } catch (e) {
+                dataFormatada = dataRegistro;
+            }
+        }
+        
+        // Buscar anexos da entrada
+        let anexos = [];
+        try {
+            const response = await fetch('/api/entrada/' + entradaId + '/anexos');
+            if (response.ok) {
+                const data = await response.json();
+                anexos = data.anexos || [];
+            }
+        } catch (e) {
+            console.error('Erro ao buscar anexos:', e);
+        }
+        
+        // Criar HTML do modal
+        let modalHTML = '<div class="modal fade" id="relatorioModal-' + entradaId + '" tabindex="-1" role="dialog" aria-labelledby="relatorioModalLabel-' + entradaId + '" aria-hidden="true">' +
+            '<div class="modal-dialog modal-lg" role="document">' +
+                '<div class="modal-content">' +
+                    '<div class="modal-header">' +
+                        '<h5 class="modal-title" id="relatorioModalLabel-' + entradaId + '">Configurar Relatório - Pedido ' + numeroPedido + '</h5>' +
+                        '<button type="button" class="close" data-dismiss="modal" aria-label="Close">' +
+                            '<span aria-hidden="true">&times;</span>' +
+                        '</button>' +
+                    '</div>' +
+                    '<div class="modal-body">' +
+                        '<form id="relatorioForm-' + entradaId + '">' +
+                            '<div class="row">' +
+                                '<div class="col-md-6">' +
+                                    '<div class="form-group">' +
+                                        '<label for="relatorio-data-' + entradaId + '">Data da Entrada:</label>' +
+                                        '<input type="date" class="form-control" id="relatorio-data-' + entradaId + '" value="' + dataFormatada + '">' +
+                                    '</div>' +
+                                '</div>' +
+                                '<div class="col-md-6">' +
+                                    '<div class="form-group">' +
+                                        '<label for="relatorio-numero-pedido-' + entradaId + '">N° do Pedido:</label>' +
+                                        '<input type="text" class="form-control" id="relatorio-numero-pedido-' + entradaId + '" value="' + (numeroPedido || '') + '">' +
+                                    '</div>' +
+                                '</div>' +
+                            '</div>' +
+                            '<div class="row">' +
+                                '<div class="col-md-6">' +
+                                    '<div class="form-group">' +
+                                        '<label for="relatorio-numero-cliente-' + entradaId + '">N° do Cliente:</label>' +
+                                        '<input type="text" class="form-control" id="relatorio-numero-cliente-' + entradaId + '" value="' + (clienteNumero || 'S/N') + '">' +
+                                    '</div>' +
+                                '</div>' +
+                                '<div class="col-md-6">' +
+                                    '<div class="form-group">' +
+                                        '<label for="relatorio-nome-cliente-' + entradaId + '">Nome do Cliente:</label>' +
+                                        '<input type="text" class="form-control" id="relatorio-nome-cliente-' + entradaId + '" value="' + (clienteNome || '') + '">' +
+                                    '</div>' +
+                                '</div>' +
+                            '</div>' +
+                            '<div class="form-group">' +
+                                '<label for="relatorio-obra-' + entradaId + '">Obra:</label>' +
+                                '<input type="text" class="form-control" id="relatorio-obra-' + entradaId + '" value="' + (obra || '') + '">' +
+                            '</div>';
+        
+        // Adicionar seção de anexos se existirem
+        if (anexos && anexos.length > 0) {
+            modalHTML += '<div class="form-group">' +
+                '<label>Selecionar Anexos para o Relatório:</label>' +
+                '<div class="row" id="anexos-selection-' + entradaId + '">';
+            
+            anexos.forEach(function(anexo) {
+                let previewHTML = '';
+                if (anexo.filename.toLowerCase().match(/\.(png|jpg|jpeg|gif|bmp|webp)$/)) {
+                    previewHTML = '<img src="/uploads/' + anexo.filename + '" class="img-thumbnail" style="max-width: 100px; max-height: 100px; object-fit: cover;" alt="' + anexo.filename + '">';
+                } else if (anexo.filename.toLowerCase().endsWith('.pdf')) {
+                    previewHTML = '<div class="text-center"><i class="fas fa-file-pdf fa-4x text-danger mb-2"></i><br><small class="text-muted">Documento PDF</small></div>';
+                } else {
+                    previewHTML = '<div class="text-center"><i class="fas fa-file fa-4x text-secondary mb-2"></i><br><small class="text-muted">Arquivo</small></div>';
+                }
+                
+                modalHTML += '<div class="col-md-4 mb-3">' +
+                    '<div class="card h-100 anexo-card" style="cursor: pointer; transition: all 0.3s ease;" onclick="toggleAnexoSelection(\'anexo-' + anexo.id + '\')">' +
+                        '<div class="card-body text-center p-3">' +
+                            '<div class="form-check mb-3">' +
+                                '<input class="form-check-input" type="checkbox" id="anexo-' + anexo.id + '" name="anexos_selecionados" value="' + anexo.id + '" checked>' +
+                                '<label class="form-check-label font-weight-bold" for="anexo-' + anexo.id + '">' +
+                                    '<i class="fas fa-check-circle text-success"></i> Incluir no Relatório' +
+                                '</label>' +
+                            '</div>' +
+                            '<div class="anexo-preview mb-3" style="height: 120px; display: flex; align-items: center; justify-content: center; background-color: #f8f9fa; border-radius: 8px;">' +
+                                previewHTML +
+                            '</div>' +
+                            '<div class="anexo-info">' +
+                                '<h6 class="card-title mb-1" style="font-size: 0.9rem;">' + (anexo.original_filename || anexo.filename) + '</h6>' +
+                                '<small class="text-muted">' + (anexo.filename.length > 20 ? anexo.filename.substring(0, 20) + '...' : anexo.filename) + '</small>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
+            });
+            
+            modalHTML += '</div>' +
+                '<div class="mt-3">' +
+                    '<button type="button" class="btn btn-outline-primary btn-sm" onclick="selecionarTodosAnexos(' + entradaId + ', true)">' +
+                        '<i class="fas fa-check-square"></i> Selecionar Todos' +
+                    '</button>' +
+                    '<button type="button" class="btn btn-outline-secondary btn-sm ml-2" onclick="selecionarTodosAnexos(' + entradaId + ', false)">' +
+                        '<i class="fas fa-square"></i> Desmarcar Todos' +
+                    '</button>' +
+                '</div>' +
+            '</div>';
+        }
+        
+        modalHTML += '</form>' +
+                    '</div>' +
+                    '<div class="modal-footer">' +
+                        '<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>' +
+                        '<button type="button" class="btn btn-primary" onclick="gerarRelatorio(' + entradaId + ')">Visualizar Relatório</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+        
+        // Adicionar modal ao DOM
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Mostrar modal
+        $('#relatorioModal-' + entradaId).modal('show');
+        
+        // Inicializar estado visual dos cards após o modal ser mostrado
+        $('#relatorioModal-' + entradaId).on('shown.bs.modal', function () {
+            initializeAnexoCards(entradaId);
+        });
+        
+        // Remover modal do DOM quando fechado
+        $('#relatorioModal-' + entradaId).on('hidden.bs.modal', function () {
+            this.remove();
+        });
+    }
+    
+
+    function toggleAnexoSelection(checkboxId) {
+        const checkbox = document.getElementById(checkboxId);
+        const card = checkbox.closest('.anexo-card');
+        
+        checkbox.checked = !checkbox.checked;
+        
+        // Atualizar visual do card usando classes CSS
+        if (checkbox.checked) {
+            card.classList.add('selected');
+        } else {
+            card.classList.remove('selected');
+        }
+    }
+    
+    function selecionarTodosAnexos(entradaId, selecionar) {
+        const checkboxes = document.querySelectorAll('#relatorioModal-' + entradaId + ' input[name="anexos_selecionados"]');
+        
+        checkboxes.forEach(checkbox => {
+            const card = checkbox.closest('.anexo-card');
+            checkbox.checked = selecionar;
+            
+            // Atualizar visual do card usando classes CSS
+            if (selecionar) {
+                card.classList.add('selected');
+            } else {
+                card.classList.remove('selected');
+            }
+        });
+     }
+     
+     function initializeAnexoCards(entradaId) {
+         const checkboxes = document.querySelectorAll('#relatorioModal-' + entradaId + ' input[name="anexos_selecionados"]');
+         
+         checkboxes.forEach(checkbox => {
+             const card = checkbox.closest('.anexo-card');
+             
+             // Aplicar classe 'selected' se o checkbox estiver marcado
+             if (checkbox.checked) {
+                 card.classList.add('selected');
+             } else {
+                 card.classList.remove('selected');
+             }
+         });
+     }
+      
+      function criarModalRelatorio(dados) {
+          const modalId = 'relatorioVisualizacao-' + dados.entradaId;
+          
+          // Remover modal existente se houver
+          const modalExistente = document.getElementById(modalId);
+          if (modalExistente) {
+              modalExistente.remove();
+          }
+          
+          // Formatar data para exibição
+          const dataFormatada = new Date(dados.data + 'T00:00:00').toLocaleDateString('pt-BR');
+          
+          // Gerar HTML dos anexos
+          let anexosHTML = '';
+          if (dados.anexos && dados.anexos.length > 0) {
+              anexosHTML = '<div class="anexos-section">';
+              anexosHTML += '<div class="anexos-title" style="text-transform: uppercase;"><i class="fas fa-images"></i> Anexos do Pedido</div>';
+              
+              dados.anexos.forEach(function(anexo, index) {
+                  if (anexo.filename.toLowerCase().match(/\.(png|jpg|jpeg|gif|bmp|webp)$/)) {
+                      let imageClass = 'relatorio-imagem';
+                      let containerClass = 'text-center mb-4';
+                      
+                      // Primeira imagem - layout especial
+                      if (index === 0) {
+                          imageClass += ' primeira-imagem';
+                          containerClass = 'container-imagens text-center mb-4';
+                      }
+                      
+                      anexosHTML += '<div class="' + containerClass + '">';
+                      anexosHTML += '<img src="/uploads/' + anexo.filename + '" class="' + imageClass + '" alt="' + anexo.filename + '" style="max-width: 100%; height: auto; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); object-fit: contain; page-break-inside: avoid;" onload="ajustarLayoutImagem(this, ' + index + ')">';
+                      anexosHTML += '</div>';
+                  }
+              });
+              
+              anexosHTML += '</div>';
+          }
+          
+          let modalHTML = '<div class="modal fade" id="' + modalId + '" tabindex="-1" role="dialog" aria-labelledby="' + modalId + 'Label" aria-hidden="true">';
+          modalHTML += '<div class="modal-dialog modal-xl" role="document">';
+          modalHTML += '<div class="modal-content">';
+          modalHTML += '<div class="modal-header">';
+          modalHTML += '<h5 class="modal-title" id="' + modalId + 'Label" style="text-transform: uppercase;"><i class="fas fa-file-alt"></i> Relatório do Pedido</h5>';
+          modalHTML += '<div class="ml-auto d-flex">';
+          modalHTML += '<button type="button" class="btn btn-primary btn-sm mr-2" onclick="imprimirRelatorio(\'' + modalId + '\')" style="text-transform: uppercase;">';
+          modalHTML += '<i class="fas fa-print"></i> Imprimir</button>';
+          modalHTML += '<button type="button" class="btn btn-success btn-sm mr-2" onclick="baixarPDFRelatorio(\'' + modalId + '\', \'' + dados.numeroPedido + '\')" style="text-transform: uppercase;">';
+          modalHTML += '<i class="fas fa-download"></i> Download PDF</button>';
+          modalHTML += '<button type="button" class="close" data-dismiss="modal" aria-label="Close">';
+          modalHTML += '<span aria-hidden="true">&times;</span></button></div></div>';
+          modalHTML += '<div class="modal-body" id="' + modalId + '-content" style="max-height: 70vh; overflow-y: auto; overflow-x: hidden;">';
+          modalHTML += '<div class="relatorio-container" style="background: white; border-radius: 8px; overflow: hidden;">';
+          modalHTML += '<div class="relatorio-content" style="padding: 15px 30px 30px 30px;">';
+          modalHTML += '<div class="info-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 25px;">';
+          
+          // Data da Entrada
+          modalHTML += '<div class="info-item" style="background: #f8f9fa; padding: 20px; border-radius: 5px; border-left: 4px solid #007bff;">';
+          modalHTML += '<div class="info-label" style="font-weight: 600; color: #495057; font-size: 1.0em; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Data da Entrada</div>';
+          modalHTML += '<div class="info-value" style="font-size: 1.3em; color: #212529; font-weight: 500; text-transform: uppercase;">' + dataFormatada + '</div></div>';
+          
+          // Número do Pedido
+          modalHTML += '<div class="info-item" style="background: #f8f9fa; padding: 20px; border-radius: 5px; border-left: 4px solid #007bff;">';
+          modalHTML += '<div class="info-label" style="font-weight: 600; color: #495057; font-size: 1.0em; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Número do Pedido</div>';
+          modalHTML += '<div class="info-value" style="font-size: 1.3em; color: #212529; font-weight: 500; text-transform: uppercase;">' + dados.numeroPedido + '</div></div>';
+          
+          // Número do Cliente
+          modalHTML += '<div class="info-item" style="background: #f8f9fa; padding: 20px; border-radius: 5px; border-left: 4px solid #007bff;">';
+          modalHTML += '<div class="info-label" style="font-weight: 600; color: #495057; font-size: 1.0em; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Número do Cliente</div>';
+          modalHTML += '<div class="info-value" style="font-size: 1.3em; color: #212529; font-weight: 500; text-transform: uppercase;">' + dados.numeroCliente + '</div></div>';
+          
+          // Nome do Cliente
+          modalHTML += '<div class="info-item" style="background: #f8f9fa; padding: 20px; border-radius: 5px; border-left: 4px solid #007bff;">';
+          modalHTML += '<div class="info-label" style="font-weight: 600; color: #495057; font-size: 1.0em; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Nome do Cliente</div>';
+          modalHTML += '<div class="info-value" style="font-size: 1.3em; color: #212529; font-weight: 500; text-transform: uppercase;">' + dados.nomeCliente + '</div></div>';
+          
+          modalHTML += '</div>';
+          
+          // Obra (se existir)
+          if (dados.obra) {
+              modalHTML += '<div class="info-item" style="background: #f8f9fa; padding: 20px; border-radius: 5px; border-left: 4px solid #007bff; margin-bottom: 25px;">';
+              modalHTML += '<div class="info-label" style="font-weight: 600; color: #495057; font-size: 1.0em; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Obra</div>';
+              modalHTML += '<div class="info-value" style="font-size: 1.3em; color: #212529; font-weight: 500; text-transform: uppercase;">' + dados.obra + '</div></div>';
+          }
+          
+          modalHTML += anexosHTML;
+          modalHTML += '</div></div></div></div></div></div>';
+          
+          // Adicionar modal ao DOM
+          document.body.insertAdjacentHTML('beforeend', modalHTML);
+          
+          // Mostrar modal
+          $('#' + modalId).modal('show');
+          
+          // Remover modal do DOM quando fechado
+          $('#' + modalId).on('hidden.bs.modal', function () {
+              this.remove();
+          });
+      }
+      
+      function imprimirRelatorio(modalId) {
+          const conteudo = document.getElementById(modalId + '-content').innerHTML;
+          const janelaImpressao = window.open('', '_blank');
+          
+          janelaImpressao.document.write(
+              '<!DOCTYPE html>' +
+              '<html>' +
+              '<head>' +
+                  '<title>Relatório do Pedido</title>' +
+                  '<link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" rel="stylesheet">' +
+                  '<style>' +
+                      '@media print {' +
+                          'body { margin: 0; padding: 10px 20px 20px 20px; font-size: 12pt; text-transform: uppercase; }' +
+                          '.container { max-width: none; width: 100%; margin: 0; padding: 0; }' +
+                          '.relatorio-imagem { max-width: 100%; height: auto; page-break-inside: avoid; margin-bottom: 15px; border: 1px solid #ddd; object-fit: contain; page-break-after: auto; }' +
+                          '.relatorio-imagem.primeira-imagem { max-height: 15cm; width: auto; display: block; margin: 1cm auto; }' +
+                          '.relatorio-imagem.imagem-pequena { max-height: 8cm; max-width: 45%; display: inline-block; margin: 0.5cm 0.25cm; vertical-align: top; }' +
+                          '.relatorio-imagem.imagem-media { max-height: 12cm; width: auto; display: block; margin: 0.75cm auto; }' +
+                          '.container-imagens { page-break-inside: avoid; margin-bottom: 1cm; }' +
+                          '.linha-imagens { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 0.5cm; margin-bottom: 0.75cm; page-break-inside: avoid; }' +
+                          '.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 25px; }' +
+                          '.info-item { background: #f8f9fa !important; padding: 20px !important; border-radius: 5px; border-left: 4px solid #007bff !important; }' +
+                          '.info-label { font-weight: 600 !important; color: #495057 !important; font-size: 1.0em !important; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px !important; }' +
+                          '.info-value { font-size: 1.3em !important; color: #212529 !important; font-weight: 500 !important; text-transform: uppercase !important; }' +
+                          '.relatorio-content { padding: 15px 30px 30px 30px !important; }' +
+                          '* { text-transform: uppercase !important; }' +
+                      '}' +
+                      '@page { size: A4; margin: 1.5cm; }' +
+                      'body { font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif; text-transform: uppercase; }' +
+                  '</style>' +
+              '</head>' +
+              '<body>' +
+                  conteudo +
+                  '<script>' +
+                      'window.onload = function() {' +
+                          'window.print();' +
+                          'window.onafterprint = function() {' +
+                              'window.close();' +
+                          '};' +
+                      '};' +
+                  '<\/script>' +
+              '</body>' +
+              '</html>'
+          );
+          
+          janelaImpressao.document.close();
+      }
+      
+      // Função para ajustar layout inteligente das imagens
+      function ajustarLayoutImagem(img, index) {
+          const aspectRatio = img.naturalWidth / img.naturalHeight;
+          
+          if (index === 0) {
+              // Primeira imagem - sempre otimizada para caber após o texto
+              img.style.maxHeight = '60vh';
+              img.style.width = 'auto';
+              img.style.display = 'block';
+              img.style.margin = '20px auto';
+          } else if (aspectRatio > 1.5) {
+              // Imagem muito larga - ocupar linha inteira
+              img.classList.add('imagem-media');
+              img.style.maxHeight = '50vh';
+              img.style.width = 'auto';
+              img.style.display = 'block';
+              img.style.margin = '15px auto';
+          } else {
+              // Imagem pode ser agrupada
+              img.classList.add('imagem-pequena');
+              img.style.maxHeight = '40vh';
+              img.style.width = 'auto';
+              img.style.display = 'inline-block';
+              img.style.margin = '10px 5px';
+              img.style.verticalAlign = 'top';
+          }
+      }
+      
+      function baixarPDFRelatorio(modalId, numeroPedido) {
+          // Carregar bibliotecas se não estiverem disponíveis
+          if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') {
+              const script1 = document.createElement('script');
+              script1.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+              document.head.appendChild(script1);
+              
+              const script2 = document.createElement('script');
+              script2.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+              document.head.appendChild(script2);
+              
+              script2.onload = function() {
+                  setTimeout(() => gerarPDF(modalId, numeroPedido), 500);
+              };
+          } else {
+              gerarPDF(modalId, numeroPedido);
+          }
+      }
+      
+      function gerarPDF(modalId, numeroPedido) {
+          const elemento = document.querySelector('#' + modalId + ' .relatorio-container');
+          
+          html2canvas(elemento, {
+              scale: 2,
+              useCORS: true,
+              allowTaint: true
+          }).then(canvas => {
+              const { jsPDF } = window.jspdf;
+              const imgData = canvas.toDataURL('image/png');
+              const pdf = new jsPDF('p', 'mm', 'a4');
+              
+              const imgWidth = 210; // A4 width in mm
+              const pageHeight = 295; // A4 height in mm
+              const imgHeight = (canvas.height * imgWidth) / canvas.width;
+              let heightLeft = imgHeight;
+              
+              let position = 0;
+              
+              pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+              heightLeft -= pageHeight;
+              
+              while (heightLeft >= 0) {
+                  position = heightLeft - imgHeight;
+                  pdf.addPage();
+                  pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                  heightLeft -= pageHeight;
+              }
+              
+              pdf.save('relatorio-pedido-' + numeroPedido + '.pdf');
+          }).catch(error => {
+              console.error('Erro ao gerar PDF:', error);
+              alert('Erro ao gerar PDF. Tente usar a função de impressão.');
+          });
+      }
+      
+      // Funções para drag and drop de anexos
+      function allowDrop(ev) {
+          ev.preventDefault();
+      }
+      
+      function dragEnter(ev) {
+          ev.preventDefault();
+          ev.currentTarget.classList.add('drag-over');
+      }
+      
+      function dragLeave(ev) {
+          ev.preventDefault();
+          // Só remove a classe se realmente saiu do elemento
+          if (!ev.currentTarget.contains(ev.relatedTarget)) {
+              ev.currentTarget.classList.remove('drag-over');
+          }
+      }
+      
+      function dropAnexo(ev, entradaId) {
+          ev.preventDefault();
+          ev.currentTarget.classList.remove('drag-over');
+          
+          const files = ev.dataTransfer.files;
+          if (files.length > 0) {
+              uploadAnexos(files, entradaId, ev.currentTarget);
+          }
+      }
+      
+      function uploadAnexos(files, entradaId, targetElement) {
+          const formData = new FormData();
+          
+          // Adiciona todos os arquivos ao FormData
+          for (let i = 0; i < files.length; i++) {
+              formData.append('anexos', files[i]);
+          }
+          
+          // Adiciona o ID da entrada
+          formData.append('entrada_id', entradaId);
+          
+          // Mostra estado de upload
+          targetElement.classList.add('uploading');
+          const originalContent = targetElement.innerHTML;
+          targetElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+          
+          // Faz o upload via AJAX
+          fetch('/upload_anexos', {
+              method: 'POST',
+              body: formData
+          })
+          .then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  // Atualiza a interface
+                  updateAnexosDisplay(entradaId, data.total_anexos);
+                  
+                  // Mostra notificação de sucesso
+                  showNotification('Anexos enviados com sucesso!', 'success');
+              } else {
+                  throw new Error(data.message || 'Erro no upload');
+              }
+          })
+          .catch(error => {
+              console.error('Erro no upload:', error);
+              showNotification('Erro ao enviar anexos: ' + error.message, 'error');
+              
+              // Restaura o conteúdo original
+              targetElement.innerHTML = originalContent;
+          })
+          .finally(() => {
+              targetElement.classList.remove('uploading');
+          });
+      }
+      
+      function updateAnexosDisplay(entradaId, totalAnexos) {
+          // Atualiza todas as caixas de anexos para esta entrada
+          const anexosBoxes = document.querySelectorAll(`[data-entrada-id="${entradaId}"]`);
+          
+          anexosBoxes.forEach(box => {
+              const countSpan = box.querySelector('.anexos-count');
+              const icon = box.querySelector('i');
+              
+              if (totalAnexos > 0) {
+                  box.classList.remove('anexos-empty');
+                  box.setAttribute('data-toggle', 'modal');
+                  box.setAttribute('data-target', `#galeriaAnexos-${entradaId}`);
+                  box.title = 'Clique para ver anexos ou arraste arquivos aqui';
+                  
+                  icon.className = 'fas fa-paperclip';
+                  countSpan.textContent = totalAnexos;
+              } else {
+                  box.classList.add('anexos-empty');
+                  box.removeAttribute('data-toggle');
+                  box.removeAttribute('data-target');
+                  box.title = 'Arraste arquivos aqui para adicionar anexos';
+                  
+                  icon.className = 'fas fa-plus';
+                  countSpan.textContent = '0';
+              }
+          });
+      }
+      
+      function showNotification(message, type) {
+          // Cria elemento de notificação
+          const notification = document.createElement('div');
+          notification.className = `alert alert-${type === 'success' ? 'success' : 'danger'} notification-toast`;
+          notification.style.cssText = `
+              position: fixed;
+              top: 20px;
+              right: 20px;
+              z-index: 9999;
+              min-width: 300px;
+              animation: slideInRight 0.3s ease;
+          `;
+          notification.innerHTML = `
+              <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} mr-2"></i>
+              ${message}
+              <button type="button" class="close ml-2" onclick="this.parentElement.remove()">
+                  <span>&times;</span>
+              </button>
+          `;
+          
+          document.body.appendChild(notification);
+          
+          // Remove automaticamente após 5 segundos
+          setTimeout(() => {
+              if (notification.parentElement) {
+                  notification.style.animation = 'slideOutRight 0.3s ease';
+                  setTimeout(() => notification.remove(), 300);
+              }
+          }, 5000);
+      }
+      </script>
+
+<style>
+    :root {
+        --bg-primary: #2d3748;
+        --bg-secondary: #2d3748;
+        --border-color: #4a5568;
+        --text-primary: #e2e8f0;
+        --text-secondary: #a0aec0;
+        --hover-bg: #1a365d;
+        --hover-border: #4299e1;
+        --input-bg: #2d3748;
+        --input-border: #4a5568;
+        --input-text: #e2e8f0;
+    }
+    
+    [data-theme="light"] {
+        --bg-primary: #ffffff;
+        --bg-secondary: #f8f9fa;
+        --border-color: #dee2e6;
+        --text-primary: #212529;
+        --text-secondary: #6c757d;
+        --hover-bg: #e3f2fd;
+        --hover-border: #007bff;
+        --input-bg: #ffffff;
+        --input-border: #ced4da;
+        --input-text: #495057;
+    }
+    
+    /* Estilos para campos de formulário */
+    .form-control {
+        background-color: var(--input-bg) !important;
+        border-color: var(--input-border) !important;
+        color: var(--input-text) !important;
+    }
+    
+    .form-control:focus {
+        background-color: var(--input-bg) !important;
+        border-color: var(--hover-border) !important;
+        color: var(--input-text) !important;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+    }
+    
+    .form-control::placeholder {
+        color: var(--text-secondary) !important;
+    }
+    
+    /* Labels */
+    label {
+        color: var(--text-primary) !important;
+    }
+    
+    /* Cards */
+    .card {
+        background-color: var(--bg-primary) !important;
+        border-color: var(--border-color) !important;
+    }
+    
+    .card-header {
+        background-color: var(--bg-secondary) !important;
+        border-color: var(--border-color) !important;
+        color: var(--text-primary) !important;
+    }
+    
+    .card-body {
+        background-color: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
+    }
+    
+    /* Tabelas */
+    .table {
+        color: var(--text-primary) !important;
+    }
+    
+    .table th {
+        background-color: var(--bg-secondary) !important;
+        border-color: var(--border-color) !important;
+        color: var(--text-primary) !important;
+    }
+    
+    .table td {
+        background-color: var(--bg-primary) !important;
+        border-color: var(--border-color) !important;
+        color: var(--text-primary) !important;
+    }
+    
+    .table-striped tbody tr:nth-of-type(odd) {
+        background-color: var(--bg-secondary) !important;
+    }
+    
+    /* Modal */
+    .modal-content {
+        background-color: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
+    }
+    
+    .modal-header {
+        background-color: var(--bg-secondary) !important;
+        border-color: var(--border-color) !important;
+        color: var(--text-primary) !important;
+    }
+    
+    .modal-body {
+        background-color: var(--bg-primary) !important;
+        color: var(--text-primary) !important;
+    }
+    
+    .modal-footer {
+        background-color: var(--bg-secondary) !important;
+        border-color: var(--border-color) !important;
+    }
+</style>
+
 {% endblock %}

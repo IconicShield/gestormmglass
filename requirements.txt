@@ -17,7 +17,3 @@ eventlet==0.35.2
 # Ferramentas e Utilitários
 openpyxl==3.1.2
 python-dotenv==1.0.1
-
-gunicorn
-PyMuPDF
-psycopg2-binary

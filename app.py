@@ -178,6 +178,51 @@ def get_dashboard_data():
     }
     return {'pedidos': pedidos_dashboard, 'orcamentos': orcamentos_dashboard}
 
+def get_table_data():
+    """Retorna dados completos das tabelas para atualizações em tempo real"""
+    pedidos = Entrada.query.filter_by(tipo='Pedido', arquivado=False).order_by(Entrada.numero_pedido.asc()).all()
+    orcamentos = Entrada.query.filter_by(tipo='Orçamento', arquivado=False).order_by(Entrada.numero_pedido.asc()).all()
+    
+    pedidos_data = []
+    for pedido in pedidos:
+        cliente_nome = pedido.cliente.nome if pedido.cliente else pedido.cliente_nome_temp
+        numero_cliente = pedido.cliente.numero_cliente if pedido.cliente else None
+        cliente_id = pedido.cliente.id if pedido.cliente else None
+        pedidos_data.append({
+            'id': pedido.id,
+            'data_cadastro': pedido.data_registro.strftime('%d/%m/%Y'),
+            'numero_pedido': pedido.numero_pedido,
+            'numero_cliente': numero_cliente,
+            'cliente_id': cliente_id,
+            'nome_cliente': cliente_nome,
+            'trabalho': pedido.obra,
+            'status': pedido.status,
+            'descricao': pedido.descricao[:50] + '...' if pedido.descricao and len(pedido.descricao) > 50 else pedido.descricao,
+            'observacoes': pedido.observacoes,
+            'anexos_count': len(pedido.anexos)
+        })
+    
+    orcamentos_data = []
+    for orcamento in orcamentos:
+        cliente_nome = orcamento.cliente.nome if orcamento.cliente else orcamento.cliente_nome_temp
+        numero_cliente = orcamento.cliente.numero_cliente if orcamento.cliente else None
+        cliente_id = orcamento.cliente.id if orcamento.cliente else None
+        orcamentos_data.append({
+            'id': orcamento.id,
+            'data_cadastro': orcamento.data_registro.strftime('%d/%m/%Y'),
+            'numero_orcamento': orcamento.numero_pedido,
+            'numero_cliente': numero_cliente,
+            'cliente_id': cliente_id,
+            'nome_cliente': cliente_nome,
+            'trabalho': orcamento.obra,
+            'status': orcamento.status,
+            'descricao': orcamento.descricao[:50] + '...' if orcamento.descricao and len(orcamento.descricao) > 50 else orcamento.descricao,
+            'observacoes': orcamento.observacoes,
+            'anexos_count': len(orcamento.anexos)
+        })
+    
+    return {'pedidos_data': pedidos_data, 'orcamentos_data': orcamentos_data}
+
 @app.template_filter('format_phone')
 def format_phone_filter(s):
     """Formata um número de telefone para (xx) x xxxx-xxxx."""
@@ -409,30 +454,50 @@ def atualizar_status(id):
         return jsonify({'success': True, 'message': 'Status atualizado com sucesso!', 'dashboard': novos_dados_dashboard})
     return jsonify({'success': False, 'message': 'Status inválido.'}), 400
 
-@app.route('/stream')
+# Rota SSE removida - não é mais necessária
+
+@app.route('/api/dashboard_data')
 @login_required
-def stream():
-    """Server-Sent Events para atualizações em tempo real"""
-    def event_stream():
-        global last_update_time
-        client_last_update = datetime.now()
-        
-        while True:
-            # Verifica se houve atualizações
-            if last_update_time > client_last_update:
-                dashboard_data = get_dashboard_data()
-                import json
-                yield f"data: {json.dumps(dashboard_data)}\n\n"
-                client_last_update = datetime.now()
-            
-            # Aguarda 3 segundos antes da próxima verificação
-            import time
-            time.sleep(3)
-    
-    return Response(event_stream(), mimetype="text/event-stream", headers={
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive'
-    })
+def api_dashboard_data():
+    """API para fornecer dados completos do dashboard e tabelas para atualização automática"""
+    try:
+        dashboard_data = get_dashboard_data()
+        table_data = get_table_data()
+        return jsonify({
+            'success': True,
+            'dashboard': dashboard_data,
+            'tables': table_data,
+            'timestamp': datetime.now().isoformat(),
+            'server_time': datetime.now().strftime('%H:%M:%S')
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao obter dados: {str(e)}'
+        }), 500
+
+@app.route('/api/entrada/<int:entrada_id>/anexos')
+@login_required
+def api_entrada_anexos(entrada_id):
+    """API para obter anexos de uma entrada específica"""
+    try:
+        entrada = Entrada.query.get_or_404(entrada_id)
+        anexos_data = []
+        for anexo in entrada.anexos:
+            anexos_data.append({
+                'id': anexo.id,
+                'filename': anexo.filename,
+                'original_filename': anexo.filename  # Usar filename como original_filename
+            })
+        return jsonify({
+            'success': True,
+            'anexos': anexos_data
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao obter anexos: {str(e)}'
+        }), 500
 
 @app.route('/converter/<int:id>', methods=['POST'])
 @login_required
@@ -652,7 +717,9 @@ def desarquivar_entrada(id):
 def pedidos_arquivados():
     """Exibe a página de pedidos e orçamentos arquivados com paginação e filtros (30 itens por página)."""
     # Parâmetros de filtro
+    search_numero = request.args.get('search_numero', '').strip()
     search_cliente = request.args.get('search_cliente', '').strip()
+    search_descricao = request.args.get('search_descricao', '').strip()
     filter_status = request.args.get('filter_status', '')
     filter_tipo = request.args.get('filter_tipo', '')
     page_pedidos = request.args.get('pedidos_page', 1, type=int)
@@ -666,6 +733,10 @@ def pedidos_arquivados():
     if filter_tipo:
         base_query = base_query.filter(Entrada.tipo == filter_tipo)
     
+    # Aplicar filtro por número se especificado
+    if search_numero:
+        base_query = base_query.filter(Entrada.numero_pedido.ilike(f'%{search_numero}%'))
+    
     # Aplicar filtro por cliente se especificado
     if search_cliente:
         base_query = base_query.join(Cliente, Entrada.cliente_id == Cliente.id, isouter=True).filter(
@@ -675,6 +746,10 @@ def pedidos_arquivados():
             )
         )
     
+    # Aplicar filtro por descrição se especificado
+    if search_descricao:
+        base_query = base_query.filter(Entrada.trabalho.ilike(f'%{search_descricao}%'))
+    
     # Aplicar filtro por status se especificado
     if filter_status:
         base_query = base_query.filter(Entrada.status == filter_status)
@@ -683,6 +758,8 @@ def pedidos_arquivados():
     if not filter_tipo or filter_tipo == 'Pedido':
         pedidos_query = Entrada.query.filter_by(arquivado=True).filter(Entrada.tipo == 'Pedido')
         # Aplicar os mesmos filtros da base_query
+        if search_numero:
+            pedidos_query = pedidos_query.filter(Entrada.numero_pedido.ilike(f'%{search_numero}%'))
         if search_cliente:
             pedidos_query = pedidos_query.join(Cliente, Entrada.cliente_id == Cliente.id, isouter=True).filter(
                 db.or_(
@@ -690,6 +767,8 @@ def pedidos_arquivados():
                     Entrada.cliente_nome_temp.ilike(f'%{search_cliente}%')
                 )
             )
+        if search_descricao:
+            pedidos_query = pedidos_query.filter(Entrada.trabalho.ilike(f'%{search_descricao}%'))
         if filter_status:
             pedidos_query = pedidos_query.filter(Entrada.status == filter_status)
     else:
@@ -699,6 +778,8 @@ def pedidos_arquivados():
     if not filter_tipo or filter_tipo == 'Orçamento':
         orcamentos_query = Entrada.query.filter_by(arquivado=True).filter(Entrada.tipo == 'Orçamento')
         # Aplicar os mesmos filtros da base_query
+        if search_numero:
+            orcamentos_query = orcamentos_query.filter(Entrada.numero_pedido.ilike(f'%{search_numero}%'))
         if search_cliente:
             orcamentos_query = orcamentos_query.join(Cliente, Entrada.cliente_id == Cliente.id, isouter=True).filter(
                 db.or_(
@@ -706,6 +787,8 @@ def pedidos_arquivados():
                     Entrada.cliente_nome_temp.ilike(f'%{search_cliente}%')
                 )
             )
+        if search_descricao:
+            orcamentos_query = orcamentos_query.filter(Entrada.trabalho.ilike(f'%{search_descricao}%'))
         if filter_status:
             orcamentos_query = orcamentos_query.filter(Entrada.status == filter_status)
     else:
@@ -724,7 +807,9 @@ def pedidos_arquivados():
     return render_template('pedidos_arquivados.html', 
                          pedidos=pedidos_paginados, 
                          orcamentos=orcamentos_paginados,
+                         search_numero=search_numero,
                          search_cliente=search_cliente,
+                         search_descricao=search_descricao,
                          filter_status=filter_status,
                          filter_tipo=filter_tipo,
                          pedidos_page=page_pedidos,
@@ -777,6 +862,62 @@ def uploaded_file(filename):
     response.headers['Content-Disposition'] = f'inline; filename="{filename}"'
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     return response
+
+@app.route('/upload_anexos', methods=['POST'])
+@login_required
+def upload_anexos():
+    try:
+        entrada_id = request.form.get('entrada_id')
+        if not entrada_id:
+            return jsonify({'success': False, 'message': 'ID da entrada não fornecido'})
+        
+        # Busca a entrada
+        entrada = Entrada.query.get_or_404(entrada_id)
+        
+        # Processa os arquivos enviados
+        uploaded_files = request.files.getlist('anexos')
+        arquivos_salvos = 0
+        
+        for ficheiro in uploaded_files:
+            if ficheiro and ficheiro.filename != '':
+                # Gera nome seguro para o arquivo
+                anexo_filename = secure_filename(ficheiro.filename)
+                
+                # Adiciona timestamp se arquivo já existir
+                if os.path.exists(os.path.join(app.config['UPLOAD_FOLDER'], anexo_filename)):
+                    name, ext = os.path.splitext(anexo_filename)
+                    timestamp = str(int(time.time()))
+                    anexo_filename = f"{name}_{timestamp}{ext}"
+                
+                # Salva o arquivo
+                ficheiro.save(os.path.join(app.config['UPLOAD_FOLDER'], anexo_filename))
+                
+                # Cria registro no banco
+                novo_anexo = Anexo(filename=anexo_filename, entrada=entrada)
+                db.session.add(novo_anexo)
+                arquivos_salvos += 1
+        
+        if arquivos_salvos > 0:
+            db.session.commit()
+            
+            # Atualiza timestamp global
+            global last_update_time
+            last_update_time = datetime.now()
+            
+            # Retorna o total de anexos da entrada
+            total_anexos = len(entrada.anexos)
+            
+            return jsonify({
+                'success': True, 
+                'message': f'{arquivos_salvos} arquivo(s) enviado(s) com sucesso',
+                'total_anexos': total_anexos
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Nenhum arquivo válido foi enviado'})
+            
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Erro no servidor: {str(e)}'})
 
 @app.route('/relatorio-romaneio', methods=['GET', 'POST'])
 @login_required
@@ -912,7 +1053,7 @@ def cadastro_clientes():
                          filter_tipo_pessoa=filter_tipo_pessoa,
                          search_cpf_cnpj=search_cpf_cnpj)
 
-@app.route('/novo-cliente/<tipo>', methods=['GET', 'POST'])
+@app.route('/novo_cliente/<tipo>', methods=['GET', 'POST'])
 @login_required
 def novo_cliente(tipo):
     """Renderiza o formulário e, ao salvar, valida nomes e CPFs duplicados."""
@@ -1341,6 +1482,80 @@ def importar_entradas():
 
     flash('Formato de ficheiro inválido. Por favor, envie um ficheiro .xlsx.', 'danger')
     return redirect(request.referrer)
+
+@app.route('/gerar_relatorio', methods=['POST'])
+@login_required
+def gerar_relatorio():
+    """Gera relatório de pedido com dados personalizados e anexos selecionados."""
+    try:
+        # Coletar dados do formulário
+        entrada_id = request.form.get('entrada_id')
+        data = request.form.get('data')
+        numero_pedido = request.form.get('numero_pedido')
+        numero_cliente = request.form.get('numero_cliente')
+        nome_cliente = request.form.get('nome_cliente')
+        obra = request.form.get('obra')
+        anexos_selecionados_json = request.form.get('anexos_selecionados')
+        
+        # Converter data para formato brasileiro
+        try:
+            data_obj = datetime.strptime(data, '%Y-%m-%d')
+            data_formatada = data_obj.strftime('%d/%m/%Y')
+        except:
+            data_formatada = data
+        
+        # Processar anexos selecionados
+        anexos_selecionados = []
+        if anexos_selecionados_json:
+            import json
+            anexos_ids = json.loads(anexos_selecionados_json)
+            if anexos_ids:
+                anexos_selecionados = Anexo.query.filter(Anexo.id.in_(anexos_ids)).all()
+        
+        # Renderizar template do relatório
+        return render_template('relatorio_pedido.html',
+                             data_formatada=data_formatada,
+                             numero_pedido=numero_pedido,
+                             numero_cliente=numero_cliente,
+                             nome_cliente=nome_cliente,
+                             obra=obra,
+                             anexos_selecionados=anexos_selecionados)
+    
+    except Exception as e:
+        flash(f'Erro ao gerar relatório: {str(e)}', 'danger')
+        return redirect(url_for('painel_controle'))
+
+@app.route('/relatorio_pedido/<int:id>')
+@login_required
+def relatorio_pedido(id):
+    """Gera relatório de pedido específico por ID."""
+    try:
+        # Buscar a entrada pelo ID
+        entrada = Entrada.query.get_or_404(id)
+        
+        # Preparar dados para o relatório
+        data_formatada = entrada.data.strftime('%d/%m/%Y') if entrada.data else ''
+        numero_pedido = entrada.numero_pedido or ''
+        numero_cliente = entrada.numero_cliente or ''
+        nome_cliente = entrada.nome_cliente or ''
+        obra = entrada.obra or ''
+        
+        # Buscar anexos da entrada
+        anexos_selecionados = entrada.anexos if entrada.anexos else []
+        
+        # Renderizar template do relatório
+        return render_template('relatorio_pedido.html',
+                             data_formatada=data_formatada,
+                             numero_pedido=numero_pedido,
+                             numero_cliente=numero_cliente,
+                             nome_cliente=nome_cliente,
+                             obra=obra,
+                             anexos_selecionados=anexos_selecionados,
+                             entrada=entrada)
+    
+    except Exception as e:
+        flash(f'Erro ao gerar relatório: {str(e)}', 'danger')
+        return redirect(url_for('painel_controle'))
 
 @app.route('/buscar-clientes')
 @login_required
