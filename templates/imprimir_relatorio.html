@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatório de Serviço - Impressão</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+    <style>
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            
+            body {
+                margin: 0;
+                padding: 0;
+                font-size: 12pt;
+                background: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .container {
+                max-width: none;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            
+            .relatorio-header {
+                border-bottom: 2px solid #333;
+                padding-bottom: 15px;
+                margin-bottom: 20px;
+            }
+            
+            .relatorio-container {
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                margin: 0 !important;
+                padding: 8px !important; /* Bordas drasticamente reduzidas para impressão */
+                width: 794px !important;
+                height: 1123px !important;
+                max-width: 794px !important;
+                max-height: 1123px !important;
+                transform: none !important;
+                border: none !important;
+                box-sizing: border-box !important;
+                position: relative !important;
+                overflow: hidden !important;
+            }
+            
+            /* Manter posicionamento absoluto das imagens na impressão */
+            .image-container-print {
+                position: absolute !important;
+                page-break-inside: avoid;
+                z-index: 1;
+                display: block !important;
+                border: none !important;
+                box-sizing: border-box;
+            }
+            
+            .image-container-print img {
+                width: 100% !important;
+                height: 100% !important;
+                object-fit: contain !important;
+                display: block !important;
+                border-radius: 8px;
+                border: 1px solid #ddd;
+            }
+            
+            .relatorio-imagem {
+                position: absolute !important;
+                border: 1px solid #ddd !important;
+                object-fit: contain !important;
+                border-radius: 8px !important;
+                box-shadow: none !important;
+                cursor: default;
+                z-index: 1;
+                max-width: none !important;
+                max-height: none !important;
+                page-break-inside: avoid;
+            }
+            
+            .relatorio-imagem.primeira-imagem {
+                position: absolute !important;
+                border: 1px solid #ddd !important;
+                object-fit: contain !important;
+                border-radius: 8px !important;
+                box-shadow: none !important;
+                cursor: default;
+                z-index: 1;
+                max-width: none !important;
+                max-height: none !important;
+                page-break-inside: avoid;
+            }
+            
+            .container-imagens {
+                position: relative !important;
+                width: 100% !important;
+                height: calc(29.7cm - 3cm - 170px) !important;
+                overflow: visible !important;
+                background: #ffffff !important;
+                min-height: calc(29.7cm - 3cm - 170px) !important;
+                page-break-inside: avoid;
+                margin-bottom: 20px;
+                box-sizing: border-box !important;
+            }
+            
+            .info-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+                margin-bottom: 20px;
+            }
+            
+            .info-item {
+                border-bottom: 1px solid #eee;
+                padding-bottom: 5px;
+            }
+            
+            .info-label {
+                font-weight: bold;
+                color: #333;
+            }
+            
+            /* Manter posicionamento dos textos personalizados */
+            .texto-personalizado-print {
+                position: absolute !important;
+                z-index: 1000 !important;
+                page-break-inside: avoid;
+                box-sizing: border-box !important;
+                white-space: pre-wrap !important;
+                word-wrap: break-word !important;
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+            }
+            
+            /* Garantir que a área de conteúdo dinâmico mantenha posicionamento */
+            #area-conteudo-dinamico {
+                position: relative !important;
+                width: 100% !important;
+                height: 100% !important;
+                box-sizing: border-box !important;
+            }
+            
+            #textosContainer {
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                box-sizing: border-box !important;
+                pointer-events: none !important;
+            }
+            
+            /* Regra global para cores na impressão */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
+        
+        @page {
+            size: A4 portrait;
+            margin: 0;
+            /* Evitar redimensionamento automático do navegador */
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+                background: white !important;
+                width: 794px !important;
+                height: 1123px !important;
+            }
+            
+            .relatorio-container {
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                margin: 0 !important;
+                padding: 8px !important; /* Bordas drasticamente reduzidas para impressão */
+                width: 794px !important;
+                height: 1123px !important;
+                max-width: 794px !important;
+                max-height: 1123px !important;
+                overflow: hidden !important;
+            }
+            
+            .relatorio-content {
+                padding: 2px !important; /* Padding mínimo para o conteúdo do relatório */
+            }
+            
+            .info-grid {
+                margin-bottom: 15px !important;
+                gap: 10px !important;
+            }
+            
+            .info-item {
+                padding: 8px !important;
+                margin-bottom: 5px !important;
+            }
+            
+            .anexos-section {
+                margin-top: 10px !important;
+            }
+            
+            .anexos-title {
+                margin-bottom: 10px !important;
+                font-size: 1.1em !important;
+            }
+        }
+        
+        /* Regra universal para caixa alta */
+        * {
+            text-transform: uppercase !important;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            text-transform: uppercase;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .relatorio-container {
+            background: white;
+            width: 794px; /* Largura A4 em pixels (210mm * 3.78) */
+            height: 1123px; /* Altura A4 em pixels (297mm * 3.78) */
+            margin: 20px 0;
+            padding: 0.3cm; /* Bordas drasticamente reduzidas */
+            box-shadow: 0 0 30px rgba(0,0,0,0.15);
+            border-radius: 8px;
+            box-sizing: border-box;
+            overflow: visible;
+            position: relative;
+            transform: scale(0.7); /* Escala 70% para melhor visualização */
+            transform-origin: top center;
+            border: 1px solid #e0e0e0; /* Borda sutil para delimitar a folha */
+            max-width: 794px;
+            max-height: 1123px;
+            flex-shrink: 0;
+        }
+        
+        /* Manter escala 100% em todas as resoluções */
+        
+        .relatorio-content {
+            padding: 0; /* Remover padding extra pois já está no container */
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Cabeçalho do Relatório */
+        .relatorio-header {
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .info-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+        
+        .info-value {
+            font-size: 1.1em;
+            color: #212529;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        
+        .obra-info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #2196f3;
+        }
+        
+        .anexos-section {
+            margin-top: 40px;
+        }
+        
+        .anexos-title {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #dee2e6;
+            text-transform: uppercase;
+        }
+        
+        .relatorio-imagem {
+            position: absolute;
+            border: 1px solid #ddd;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+            cursor: default;
+            z-index: 1;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
+            max-width: none;
+            max-height: none;
+        }
+        
+        .relatorio-imagem.primeira-imagem {
+            position: absolute;
+            border: 1px solid #ddd;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+            cursor: default;
+            z-index: 1;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
+            max-width: none;
+            max-height: none;
+        }
+        
+        .container-imagens {
+            position: relative;
+            width: 100%;
+            height: calc(1123px - 200px - 170px); /* Altura A4 menos padding e cabeçalho */
+            overflow: hidden; /* Evitar elementos fora da área */
+            background: #ffffff;
+            min-height: calc(1123px - 200px - 170px); /* Altura mínima igual à calculada */
+            max-height: calc(1123px - 200px - 170px); /* Altura máxima para evitar overflow */
+            page-break-inside: avoid;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+        
+        /* Removido - não necessário com posicionamento absoluto */
+        
+        .relatorio-imagem:hover {
+            transform: scale(1.02);
+        }
+        
+        .controles-impressao {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .btn-controle {
+            margin-left: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .data-atual {
+            font-size: 0.9em;
+            color: rgba(255,255,255,0.8);
+            margin-top: 10px;
+        }
+        
+        .image-container-print {
+            position: absolute;
+            page-break-inside: avoid;
+            z-index: 1;
+            display: block;
+            border: 1px solid transparent;
+            box-sizing: border-box;
+        }
+        
+        .image-container-print img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            display: block;
+            border-radius: 8px;
+        }
+        
+        /* Definição CSS removida - usando apenas a versão com !important acima */
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <div class="controles-impressao no-print">
+            <button class="btn btn-primary btn-controle" onclick="window.print()">
+                <i class="fas fa-print"></i> Imprimir
+            </button>
+            <button class="btn btn-success btn-controle" onclick="gerarPDF()">
+                <i class="fas fa-file-pdf"></i> Gerar PDF
+            </button>
+            <a href="/editar/{{ relatorio.id }}" class="btn btn-secondary btn-controle">
+                <i class="fas fa-arrow-left"></i> Voltar à Edição
+            </a>
+        </div>
+
+        <div class="relatorio-container" id="relatorio-print">
+            <div class="relatorio-content">
+                <div class="relatorio-header">
+                    <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Data:</div>
+                        <div class="info-value" id="data">{{ relatorio.data_formatada }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">N° Pedido:</div>
+                        <div class="info-value" id="numeroPedido">{{ relatorio.id }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">N° Cliente:</div>
+                        <div class="info-value" id="numeroCliente">{{ relatorio.numero_cliente or '' }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Cliente:</div>
+                        <div class="info-value" id="cliente">{{ relatorio.cliente or '' }}</div>
+                    </div>
+                    <div class="info-item" id="obraItem">
+                        <div class="info-label">Obra:</div>
+                        <div class="info-value" id="obra">{{ relatorio.obra or 'Não informado' }}</div>
+                    </div>
+                    {% if relatorio.observacoes_pedido %}
+                    <div class="info-item" id="observacoesItem">
+                        <div class="info-label">Observações:</div>
+                        <div class="info-value" id="observacoes">{{ relatorio.observacoes_pedido }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+                </div>
+                
+                <div class="anexos-section">
+                    <div id="area-conteudo-dinamico" class="container-imagens">
+                        <div id="textosContainer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+                            {% for texto in relatorio.textos_personalizados %}
+                            <div class="texto-personalizado-print" style="
+                                position: absolute;
+                                left: {{ texto.position_left }}px;
+                                top: {{ texto.position_top }}px;
+                                font-size: {{ texto.font_size }};
+                                font-family: {{ texto.font_family }};
+                                color: {{ texto.color }};
+                                background: rgba(255,255,255,0.9);
+                                border: 1px solid #ccc;
+                                padding: 5px;
+                                border-radius: 3px;
+                                font-weight: bold;
+                                text-transform: uppercase;
+                                z-index: 10;
+                            ">{{ texto.conteudo }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+        // Dados do relatório passados do backend
+        const relatorioData = {
+            id: {{ relatorio.id }},
+            numero_pedido: {{ relatorio.numero_pedido | tojson if relatorio.numero_pedido else 'null' }},
+            numero_cliente: {{ relatorio.numero_cliente | tojson if relatorio.numero_cliente else 'null' }},
+            cliente: {{ relatorio.cliente | tojson if relatorio.cliente else 'null' }},
+            obra: {{ relatorio.obra | tojson if relatorio.obra else 'null' }},
+            data_formatada: {{ relatorio.data_formatada | tojson if relatorio.data_formatada else 'null' }},
+            imagens: {{ relatorio.imagens | tojson if relatorio.imagens else '[]' }},
+            textos_personalizados: {{ relatorio.textos_personalizados | tojson if relatorio.textos_personalizados else '[]' }}
+        };
+        
+        // Função para organizar imagens de forma inteligente
+        function organizarImagensInteligente(imagens) {
+            const container = document.getElementById('area-conteudo-dinamico');
+            if (!container || !imagens || imagens.length === 0) return;
+            
+            // Primeira imagem - ocupa uma página inteira
+            if (imagens.length > 0) {
+                const primeiraImagem = document.createElement('img');
+                primeiraImagem.src = imagens[0].caminho;
+                primeiraImagem.className = 'relatorio-imagem primeira-imagem';
+                primeiraImagem.alt = 'Primeira imagem do relatório';
+                container.appendChild(primeiraImagem);
+            }
+            
+            // Demais imagens - organizadas em linhas
+            if (imagens.length > 1) {
+                const imagensRestantes = imagens.slice(1);
+                let linhaAtual = null;
+                let imagensNaLinha = 0;
+                const maxImagensPorLinha = 2;
+                
+                imagensRestantes.forEach((imgData, index) => {
+                    if (imagensNaLinha === 0) {
+                        linhaAtual = document.createElement('div');
+                        linhaAtual.className = 'linha-imagens';
+                        container.appendChild(linhaAtual);
+                    }
+                    
+                    const img = document.createElement('img');
+                    img.src = imgData.caminho;
+                    img.className = 'relatorio-imagem';
+                    img.alt = `Imagem ${index + 2} do relatório`;
+                    img.style.maxWidth = imagensNaLinha === 0 && imagensRestantes.length - index === 1 ? '90%' : '45%';
+                    
+                    linhaAtual.appendChild(img);
+                    imagensNaLinha++;
+                    
+                    if (imagensNaLinha >= maxImagensPorLinha) {
+                        imagensNaLinha = 0;
+                    }
+                });
+            }
+        }
+        
+        // Função para carregar o conteúdo dinâmico (imagens e textos)
+        function carregarConteudoDinamico() {
+            // Preencher campos de informação com dados do backend
+            if (relatorioData.data_formatada) {
+                const dataElement = document.getElementById('data');
+                if (dataElement) dataElement.textContent = relatorioData.data_formatada;
+            }
+            
+            if (relatorioData.numero_pedido) {
+                const numeroPedidoElement = document.getElementById('numeroPedido');
+                if (numeroPedidoElement) numeroPedidoElement.textContent = relatorioData.numero_pedido;
+            }
+            
+            if (relatorioData.numero_cliente) {
+                const numeroClienteElement = document.getElementById('numeroCliente');
+                if (numeroClienteElement) numeroClienteElement.textContent = relatorioData.numero_cliente;
+            }
+            
+            if (relatorioData.cliente) {
+                const clienteElement = document.getElementById('cliente');
+                if (clienteElement) clienteElement.textContent = relatorioData.cliente;
+            }
+            
+            // Sempre mostrar campo obra
+            const obraItem = document.getElementById('obraItem');
+            if (obraItem) {
+                obraItem.style.display = 'block';
+                const obraElement = document.getElementById('obra');
+                if (obraElement) {
+                    obraElement.textContent = relatorioData.obra && relatorioData.obra.trim() ? relatorioData.obra : 'Não informado';
+                }
+            }
+            
+            const areaConteudo = document.getElementById('area-conteudo-dinamico');
+            
+            // Verificar se há posições salvas nos anexos
+            let temPosicoesSalvas = false;
+            if (relatorioData.imagens && relatorioData.imagens.length > 0) {
+                temPosicoesSalvas = relatorioData.imagens.some(img => 
+                    img.position_left !== undefined || img.position_top !== undefined
+                );
+            }
+            
+            // Carregar imagens com posições salvas ou organização inteligente
+            if (relatorioData.imagens && relatorioData.imagens.length > 0) {
+                if (temPosicoesSalvas) {
+                    renderizarImagensComPosicoesSalvas(relatorioData.imagens);
+                } else {
+                    organizarImagensInteligente(relatorioData.imagens);
+                }
+            }
+            
+            // Carregar textos personalizados com suas posições
+            if (relatorioData.textos_personalizados && relatorioData.textos_personalizados.length > 0) {
+                relatorioData.textos_personalizados.forEach((texto) => {
+                    const textElement = document.createElement('div');
+                    textElement.className = 'texto-personalizado-print';
+                    textElement.style.left = (texto.posicao_x || 0) + 'px';
+                    textElement.style.top = (texto.posicao_y || 0) + 'px';
+                    textElement.textContent = texto.conteudo || '';
+                    
+                    areaConteudo.appendChild(textElement);
+                });
+            }
+        }
+        
+        // Função para carregar conteúdo dinâmico da URL (para relatórios editáveis)
+        function carregarConteudoDinamicoURL() {
+            console.log('DEBUG: carregarConteudoDinamicoURL chamada');
+            const urlParams = new URLSearchParams(window.location.search);
+            const estadoData = urlParams.get('estado');
+            const imagensData = urlParams.get('imagens');
+            const textosData = urlParams.get('textos');
+            
+            console.log('DEBUG: Parâmetros obtidos:', {
+                estadoData: estadoData ? 'presente' : 'ausente',
+                imagensData: imagensData ? 'presente' : 'ausente',
+                textosData: textosData ? 'presente' : 'ausente'
+            });
+            
+            // Carregar dados dos campos (apenas os campos necessários)
+            const campos = {
+                'cliente': 'cliente',
+                'obra': 'obra', 
+                'numero_cliente': 'numeroCliente',
+                'numero_pedido': 'numeroPedido',
+                'data': 'data'
+            };
+            
+            Object.entries(campos).forEach(([paramName, elementId]) => {
+                const valor = urlParams.get(paramName);
+                if (valor) {
+                    const elemento = document.getElementById(elementId);
+                    if (elemento) {
+                        elemento.textContent = decodeURIComponent(valor);
+                        console.log(`DEBUG: Campo ${paramName} atualizado para:`, decodeURIComponent(valor));
+                    }
+                }
+            });
+            
+            // Sempre mostrar campo obra
+            const obraValor = urlParams.get('obra');
+            const obraItem = document.getElementById('obraItem');
+            if (obraItem) {
+                obraItem.style.display = 'block';
+                const obraElement = document.getElementById('obra');
+                if (obraElement) {
+                    obraElement.textContent = obraValor && obraValor.trim() ? decodeURIComponent(obraValor) : 'Não informado';
+                }
+            }
+            
+            // Processar estado editado (prioridade máxima)
+            if (estadoData) {
+                try {
+                    const estado = JSON.parse(decodeURIComponent(estadoData));
+                    console.log('DEBUG: Estado parseado:', estado);
+                    
+                    // Renderizar imagens com posições editadas
+                    if (estado.imagens && estado.imagens.length > 0) {
+                        console.log('DEBUG: Renderizando imagens:', estado.imagens.length);
+                        renderizarImagensEditadas(estado.imagens);
+                    }
+                    
+                    // Renderizar textos personalizados
+                    if (estado.textos && estado.textos.length > 0) {
+                        console.log('DEBUG: Renderizando textos:', estado.textos.length);
+                        renderizarTextosEditados(estado.textos);
+                    } else {
+                        console.log('DEBUG: Nenhum texto encontrado no estado');
+                    }
+                    
+                    return; // Não processar outros dados se estado foi encontrado
+                } catch (e) {
+                    console.error('DEBUG: Erro ao carregar estado da URL:', e);
+                }
+            } else {
+                console.log('DEBUG: Nenhum parâmetro estado encontrado na URL');
+            }
+            
+            // Carregar imagens da URL (fallback)
+            if (imagensData) {
+                try {
+                    const imagens = JSON.parse(decodeURIComponent(imagensData));
+                    console.log('Imagens carregadas da URL:', imagens);
+                    const imagensFormatadas = imagens.map(img => ({ caminho: img.src }));
+                    organizarImagensInteligente(imagensFormatadas);
+                } catch (e) {
+                    console.error('Erro ao carregar imagens da URL:', e);
+                }
+            }
+            
+            // Carregar textos personalizados da URL (fallback)
+            if (textosData) {
+                try {
+                    const textos = JSON.parse(decodeURIComponent(textosData));
+                    const container = document.getElementById('textosContainer');
+                    
+                    textos.forEach(texto => {
+                        const textElement = document.createElement('div');
+                        textElement.className = 'texto-personalizado-print';
+                        textElement.style.left = texto.left;
+                        textElement.style.top = texto.top;
+                        textElement.textContent = texto.content;
+                        
+                        container.appendChild(textElement);
+                    });
+                } catch (e) {
+                    console.error('Erro ao carregar textos da URL:', e);
+                }
+            }
+        }
+        
+        // Função para gerar PDF simplificada
+        async function gerarPDF() {
+            try {
+                console.log('DEBUG PDF: Iniciando geração do PDF');
+                const elemento = document.getElementById('relatorio-print');
+                if (!elemento) {
+                    console.error('DEBUG PDF: Elemento relatorio-print não encontrado');
+                    alert('Erro: Elemento para PDF não encontrado.');
+                    return;
+                }
+                
+                console.log('DEBUG PDF: Elemento encontrado, iniciando captura...');
+                
+                // Configuração otimizada para captura precisa
+                const canvas = await html2canvas(elemento, {
+                    scale: 3,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#ffffff',
+                    scrollX: 0,
+                    scrollY: 0,
+                    windowWidth: elemento.scrollWidth,
+                    windowHeight: elemento.scrollHeight
+                });
+                
+                console.log('DEBUG PDF: Canvas criado com sucesso');
+                
+                const imgData = canvas.toDataURL('image/png');
+                const { jsPDF } = window.jspdf;
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                
+                const pdfWidth = pdf.internal.pageSize.getWidth(); // 210mm
+                const pdfHeight = pdf.internal.pageSize.getHeight(); // 297mm
+                
+                console.log('DEBUG PDF: Dimensões do canvas:', canvas.width, 'x', canvas.height);
+                console.log('DEBUG PDF: Dimensões do PDF:', pdfWidth, 'x', pdfHeight);
+                
+                // Usar toda a página A4 sem margens
+                const imgWidth = pdfWidth;
+                const imgHeight = pdfHeight;
+                
+                pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+                
+                // Obter número do pedido para o nome do arquivo
+                const numeroPedido = relatorioData.numero_pedido || relatorioData.id || 'sem_numero';
+                const nomeArquivo = `relatorio_${numeroPedido}.pdf`;
+                pdf.save(nomeArquivo);
+                
+                console.log('DEBUG PDF: PDF gerado com sucesso!');
+                
+            } catch (error) {
+                console.error('Erro ao gerar PDF:', error);
+                alert('Erro ao gerar PDF: ' + error.message);
+            }
+        }
+        
+        // Função para renderizar imagens com posições salvas do banco de dados
+        function renderizarImagensComPosicoesSalvas(imagens) {
+            const container = document.getElementById('area-conteudo-dinamico');
+            if (!container) return;
+            
+            // Limpar container
+            container.innerHTML = '';
+            
+            // Renderizar cada imagem com sua posição salva
+            imagens.forEach((imgData, index) => {
+                const imgContainer = document.createElement('div');
+                imgContainer.className = 'image-container-print';
+                imgContainer.style.position = 'absolute';
+                imgContainer.style.left = (imgData.position_left || 0) + 'px';
+                imgContainer.style.top = (imgData.position_top || 0) + 'px';
+                
+                // Usar as dimensões exatas salvas no banco de dados
+                const largura = imgData.width || 150;
+                const altura = imgData.height || 100;
+                
+                imgContainer.style.width = largura + 'px';
+                imgContainer.style.height = altura + 'px';
+                
+                const img = document.createElement('img');
+                img.src = imgData.caminho;
+                img.className = 'relatorio-imagem';
+                img.alt = `Imagem ${index + 1} do relatório`;
+                img.style.width = '100%';
+                img.style.height = '100%';
+                img.style.objectFit = 'contain';
+                
+                imgContainer.appendChild(img);
+                container.appendChild(imgContainer);
+            });
+        }
+        
+        // Função para renderizar imagens com posições editadas
+        function renderizarImagensEditadas(imagensEditadas) {
+            const container = document.getElementById('area-conteudo-dinamico');
+            if (!container) return;
+            
+            // Limpar container
+            container.innerHTML = '';
+            
+            // Renderizar cada imagem com sua posição editada
+            imagensEditadas.forEach((imgData, index) => {
+                const imgContainer = document.createElement('div');
+                imgContainer.className = 'image-container-print';
+                imgContainer.style.position = 'absolute';
+                imgContainer.style.left = imgData.posicao_x + 'px';
+                imgContainer.style.top = imgData.posicao_y + 'px';
+                
+                // Usar as dimensões exatas da edição
+                const largura = imgData.largura || 150;
+                const altura = imgData.altura || 100;
+                
+                imgContainer.style.width = largura + 'px';
+                imgContainer.style.height = altura + 'px';
+                
+                const img = document.createElement('img');
+                img.src = imgData.caminho;
+                img.className = 'relatorio-imagem';
+                img.alt = `Imagem ${index + 1} do relatório`;
+                img.style.width = '100%';
+                img.style.height = '100%';
+                img.style.objectFit = 'contain';
+                
+                imgContainer.appendChild(img);
+                container.appendChild(imgContainer);
+            });
+        }
+        
+        // Função para renderizar textos editados
+        function renderizarTextosEditados(textosEditados) {
+            console.log('DEBUG: renderizarTextosEditados chamada com:', textosEditados);
+            const container = document.getElementById('textosContainer');
+            console.log('DEBUG: textosContainer encontrado:', container);
+            
+            if (!container) {
+                console.error('DEBUG: textosContainer não encontrado!');
+                return;
+            }
+            
+            // Limpar container
+            container.innerHTML = '';
+            
+            // Renderizar cada texto com sua posição editada
+            textosEditados.forEach((textoData, index) => {
+                console.log('DEBUG: Processando texto', index, ':', textoData);
+                const textElement = document.createElement('div');
+                textElement.className = 'texto-personalizado-print';
+                
+                // Construir estilos de formatação
+                const fontSize = textoData.font_size ? (textoData.font_size + 'px') : '16px';
+                const fontFamily = textoData.font_family || 'Segoe UI, Arial, sans-serif';
+                const color = textoData.color || '#333333';
+                const fontWeight = textoData.bold ? 'bold' : 'normal';
+                const fontStyle = textoData.italic ? 'italic' : 'normal';
+                const textDecoration = textoData.underline ? 'underline' : 'none';
+                
+                // Estilos simplificados para compatibilidade com html2canvas
+                textElement.style.position = 'absolute';
+                textElement.style.left = textoData.posicao_x + 'px';
+                textElement.style.top = textoData.posicao_y + 'px';
+                textElement.style.fontSize = fontSize;
+                textElement.style.fontFamily = fontFamily;
+                textElement.style.color = color;
+                textElement.style.fontWeight = fontWeight;
+                textElement.style.fontStyle = fontStyle;
+                textElement.style.textDecoration = textDecoration;
+                textElement.style.zIndex = '1000';
+                textElement.style.whiteSpace = 'pre-wrap';
+                textElement.style.pointerEvents = 'none';
+                textElement.style.display = 'block';
+                textElement.style.visibility = 'visible';
+                textElement.style.opacity = '1';
+                textElement.style.backgroundColor = 'transparent';
+                textElement.style.border = 'none';
+                textElement.style.margin = '0';
+                textElement.style.padding = '2px 4px';
+                textElement.style.lineHeight = '1.2';
+                
+                textElement.textContent = textoData.conteudo || '';
+                
+                console.log('DEBUG: Elemento criado:', textElement);
+                console.log('DEBUG: Conteúdo do texto:', textoData.conteudo);
+                console.log('DEBUG: Estilos CSS aplicados:', textElement.style.cssText);
+                
+                container.appendChild(textElement);
+                
+                // Forçar reflow para garantir renderização
+                textElement.offsetHeight;
+            });
+            
+            console.log('DEBUG: Container após renderização:', container.innerHTML);
+            console.log('DEBUG: Número de filhos no container:', container.children.length);
+            
+            // Forçar reflow do container
+            container.offsetHeight;
+        }
+        
+        // Inicializar página
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DEBUG: DOMContentLoaded executado');
+            console.log('DEBUG: URL atual:', window.location.href);
+            
+            // Verificar se há dados na URL (modo edição)
+            const urlParams = new URLSearchParams(window.location.search);
+            console.log('DEBUG: Parâmetros da URL:', {
+                estado: urlParams.has('estado'),
+                imagens: urlParams.has('imagens'),
+                textos: urlParams.has('textos')
+            });
+            
+            if (urlParams.has('estado') || urlParams.has('imagens') || urlParams.has('textos')) {
+                console.log('DEBUG: Carregando conteúdo dinâmico da URL');
+                carregarConteudoDinamicoURL();
+            } else {
+                console.log('DEBUG: Carregando conteúdo dinâmico do backend');
+                // Carregar dados do backend (modo visualização)
+                carregarConteudoDinamico();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,1187 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Relatório{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-0">
+    <!-- Barra Lateral de Ferramentas -->
+    <div class="sidebar-tools">
+        <div class="tools-header">
+            <h6 class="mb-3 text-white">
+                <i class="fas fa-tools mr-2"></i>
+                FERRAMENTAS
+            </h6>
+        </div>
+        
+        <div class="tool-buttons">
+            <button type="button" class="btn btn-tool btn-success mb-2" onclick="abrirPaginaImpressao()">
+                <i class="fas fa-print mr-2"></i>
+                IMPRIMIR
+            </button>
+            
+
+            
+            <button type="button" class="btn btn-tool btn-warning mb-2" onclick="resetarImagens()">
+                <i class="fas fa-undo mr-2"></i>
+                RESETAR IMAGENS
+            </button>
+            
+            <hr class="my-3" style="border-color: rgba(255,255,255,0.3);">
+            
+            <a href="{{ url_for('configurar_relatorio', id=entrada.id) }}" class="btn btn-tool btn-secondary mb-2">
+                <i class="fas fa-arrow-left mr-2"></i>
+                VOLTAR
+            </a>
+        </div>
+    </div>
+    
+    <!-- Área Principal do Relatório -->
+    <div class="main-content">
+        <!-- Indicador de Tamanho A4 -->
+        <div class="a4-indicator">
+            <i class="fas fa-file-alt mr-2"></i>
+            <span>Folha A4 (21cm × 29.7cm) - Escala 100%</span>
+        </div>
+        <div class="relatorio-container" id="relatorio-container">
+            <!-- Cabeçalho do Relatório -->
+            <div class="relatorio-header">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">DATA:</div>
+                        <div class="info-value">{{ data_formatada }}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">PEDIDO Nº:</div>
+                        <input type="text" id="numeroPedido" class="info-value-editable" value="{{ numero_pedido }}" placeholder="Número do pedido">
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">CLIENTE Nº:</div>
+                        <input type="text" id="numeroCliente" class="info-value-editable" value="{{ numero_cliente }}" placeholder="Número do cliente">
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">NOME:</div>
+                        <input type="text" id="cliente" class="info-value-editable" value="{{ nome_cliente }}" placeholder="Nome do cliente">
+                    </div>
+                </div>
+                <div class="obra-observacoes-grid">
+                    <div class="obra-info">
+                        <div class="info-label">OBRA:</div>
+                        <input type="text" id="obra" class="info-value-editable" value="{{ obra or '' }}" placeholder="Nome da obra">
+                    </div>
+                    <div class="observacoes-info">
+                        <div class="info-label">OBSERVAÇÕES:</div>
+                        <textarea id="observacoesPedido" class="info-value-editable" 
+                                  maxlength="200" placeholder="Observações do pedido">{{ observacoes_pedido or '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Área de Edição das Imagens -->
+            <div class="edit-area" id="edit-area">
+                <!-- Indicadores de limite lateral -->
+                <div class="page-boundary-indicator left"></div>
+                <div class="page-boundary-indicator right"></div>
+                
+                {% if anexos_selecionados %}
+                    {% for anexo in anexos_selecionados %}
+                        {% if anexo.filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp')) %}
+                            <div class="image-container-editavel" data-anexo-id="{{ anexo.id }}">
+                                <img src="{{ url_for('uploaded_file', filename=anexo.filename) }}" 
+                                     class="relatorio-imagem-editavel {{ 'primeira-imagem' if loop.first else '' }}" 
+                                     alt="Anexo {{ loop.index }}">
+                                <div class="resize-handles">
+                                    <div class="resize-handle nw" data-direction="nw"></div>
+                                    <div class="resize-handle ne" data-direction="ne"></div>
+                                    <div class="resize-handle sw" data-direction="sw"></div>
+                                    <div class="resize-handle se" data-direction="se"></div>
+                                    <div class="resize-handle n" data-direction="n"></div>
+                                    <div class="resize-handle s" data-direction="s"></div>
+                                    <div class="resize-handle w" data-direction="w"></div>
+                                    <div class="resize-handle e" data-direction="e"></div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <div class="no-images-message">
+                        <i class="fas fa-images fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">Nenhuma imagem selecionada para o relatório.</p>
+                    </div>
+                {% endif %}
+                
+                <!-- Zona de drop para nova página -->
+                <div class="new-page-drop-zone" id="new-page-drop-zone">
+                    Solte aqui para criar nova página
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Layout Principal */
+.container-fluid {
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Barra Lateral de Ferramentas */
+.sidebar-tools {
+    position: fixed;
+    top: 60px; /* Posicionar abaixo da barra superior */
+    right: 0;
+    width: 200px;
+    height: calc(130vh - 60px); /* Ajustar altura para compensar o top */
+    background: linear-gradient(135deg, #29313a 0%, #222a32 100%); /* Cores do programa */
+    padding: 20px;
+    z-index: 1000;
+    box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+    border-top-left-radius: 10px;
+}
+
+.tools-header h6 {
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+.btn-tool {
+    width: 100%;
+    padding: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    border-radius: 5px;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-tool:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+/* Área Principal */
+.main-content {
+    margin-right: 200px;
+    margin-top: 10px; /* Compensar a barra superior */
+    height: calc(100vh - 60px);
+    overflow-y: auto;
+    background-color: #f8f9fa;
+    padding: 20px 40px; /* Aumentar padding horizontal para melhor centralização */
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+/* Indicador A4 */
+.a4-indicator {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 25px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+    text-align: center;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+/* Container do Relatório */
+.relatorio-container {
+    background: white;
+    width: 21cm; /* Largura exata A4 */
+    height: 29cm; /* Altura exata A4 */
+    margin: 20px 0;
+    padding: 0.3cm; /* Bordas drasticamente reduzidas */
+    box-shadow: 0 0 30px rgba(0,0,0,0.15);
+    border-radius: 8px;
+    box-sizing: border-box;
+    overflow: visible;
+    position: relative;
+    transform: scale(1.0); /* Escala 100% - tamanho real A4 */
+    transform-origin: top center;
+    border: 1px solid #e0e0e0; /* Borda sutil para delimitar a folha */
+    max-width: none;
+    flex-shrink: 0;
+}
+
+/* Manter escala 100% em todas as resoluções */
+
+/* Cabeçalho do Relatório */
+.relatorio-header {
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.info-item {
+    background: #f8f9fa;
+    padding: 8px 12px;
+    border-radius: 5px;
+    border-left: 4px solid #007bff;
+}
+
+.info-label {
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.9em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+}
+
+.info-value {
+    font-size: 1.1em;
+    color: #212529;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.info-value-editable {
+    font-size: 1.1em;
+    color: #212529;
+    font-weight: 500;
+    text-transform: uppercase;
+    border: none;
+    background: transparent;
+    outline: none;
+    width: 100%;
+    padding: 2px 4px;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+    resize: none; /* Desabilita redimensionamento */
+    height: 35px; /* Altura reduzida */
+}
+
+.info-value-editable:focus {
+    background: #f8f9fa;
+    border: 1px solid #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.info-value-editable:hover {
+    background: #f8f9fa;
+}
+
+.obra-observacoes-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.obra-info {
+    background: #e3f2fd;
+    padding: 8px 12px;
+    border-radius: 5px;
+    border-left: 4px solid #d7e7f4;
+}
+
+.observacoes-info {
+    background: #f3e5f5;
+    padding: 8px 12px;
+    border-radius: 5px;
+    border-left: 4px solid #e1bee7;
+}
+
+
+
+/* Área de Edição */
+.edit-area {
+    position: relative;
+    width: 100%;
+    height: calc(21.4cm - 50px); /* Altura disponível menos padding (3cm) e cabeçalho (50px) */
+    overflow: visible; /* Permitir elementos fora da área */
+    border: 1px dashed #ccc;
+    background: #ffffff;
+    min-height: calc(21.4cm - 50px); /* Altura mínima igual à calculada */
+    border-radius: 1px;
+    box-sizing: border-box;
+}
+
+/* Indicador de limite inferior da página */
+.edit-area::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3);
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+    z-index: 9;
+}
+
+/* Zona de drop para nova página */
+.new-page-drop-zone {
+    position: absolute;
+    bottom: -60px;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: 2px dashed #4c63d2;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s ease;
+    z-index: 5;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.new-page-drop-zone.active {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.new-page-drop-zone.drag-over {
+    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+    border-color: #11998e;
+    transform: translateY(0) scale(1.02);
+    box-shadow: 0 6px 20px rgba(17, 153, 142, 0.4);
+}
+
+.new-page-drop-zone::before {
+    content: '📄';
+    font-size: 24px;
+    margin-right: 10px;
+}
+
+/* Indicador de limite lateral */
+.page-boundary-indicator {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(180deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3);
+    opacity: 0.6;
+    z-index: 2;
+}
+
+.page-boundary-indicator.left {
+    left: -1px;
+}
+
+.page-boundary-indicator.right {
+    right: -1px;
+}
+
+/* Containers de Imagem Editáveis */
+.image-container-editavel {
+    position: absolute;
+    display: block;
+    cursor: move;
+    border: 2px dashed transparent;
+    transition: border-color 0.3s ease;
+    z-index: 1;
+}
+
+.image-container-editavel.primeira-imagem {
+    top: 20px;
+    left: 20px;
+}
+
+.image-container-editavel:not(.primeira-imagem) {
+    top: 20px;
+    left: 200px;
+}
+
+.image-container-editavel.dragging {
+    opacity: 0.8;
+    transform: scale(1.05);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+    transition: none;
+}
+
+.image-container-editavel:hover {
+    border-color: #007bff;
+}
+
+.image-container-editavel.selected {
+    border-color: #007bff;
+}
+
+.relatorio-imagem-editavel {
+    width: 150px; /* Tamanho inicial proporcional ao A4 */
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease;
+    display: block;
+}
+
+.relatorio-imagem-editavel:hover {
+    transform: scale(1.02);
+}
+
+/* Handles de Redimensionamento */
+.resize-handles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.image-container-editavel.selected .resize-handles,
+.image-container-editavel:hover .resize-handles {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.resize-handle {
+    position: absolute;
+    background: #007bff;
+    border: 2px solid white;
+    border-radius: 50%;
+    width: 12px;
+    height: 12px;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Posicionamento dos Handles */
+.resize-handle.nw { top: -6px; left: -6px; cursor: nw-resize; }
+.resize-handle.ne { top: -6px; right: -6px; cursor: ne-resize; }
+.resize-handle.sw { bottom: -6px; left: -6px; cursor: sw-resize; }
+.resize-handle.se { bottom: -6px; right: -6px; cursor: se-resize; }
+.resize-handle.n { top: -6px; left: 50%; transform: translateX(-50%); cursor: n-resize; }
+.resize-handle.s { bottom: -6px; left: 50%; transform: translateX(-50%); cursor: s-resize; }
+.resize-handle.w { top: 50%; left: -6px; transform: translateY(-50%); cursor: w-resize; }
+.resize-handle.e { top: 50%; right: -6px; transform: translateY(-50%); cursor: e-resize; }
+
+
+
+/* Mensagem quando não há imagens */
+.no-images-message {
+    text-align: center;
+    padding: 50px;
+    color: #6c757d;
+}
+
+/* Estilos para Impressão */
+@media print {
+    /* Ocultar TODOS os elementos exceto o relatório */
+    * {
+        visibility: hidden !important;
+    }
+    
+    /* Mostrar apenas o container do relatório e seus filhos */
+    .relatorio-container,
+    .relatorio-container * {
+        visibility: visible !important;
+    }
+    
+    /* Ocultar elementos de interface dentro do relatório */
+    .sidebar-tools,
+    .resize-handles,
+    nav,
+    .navbar,
+    .btn,
+    button {
+        visibility: hidden !important;
+        display: none !important;
+    }
+    
+    /* Resetar layout para impressão */
+    html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white !important;
+        font-size: 12pt !important;
+        width: 100% !important;
+        height: 100% !important;
+    }
+    
+    .relatorio-container {
+        position: static !important;
+        top: auto !important;
+        left: auto !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 100vh !important;
+        margin: 0 !important;
+        padding: 1cm !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        background: white !important;
+        box-sizing: border-box !important;
+        overflow: visible !important;
+        transform: none !important;
+        display: block !important;
+    }
+    
+    .edit-area {
+        border: none !important;
+        background: white !important;
+        height: auto !important;
+        min-height: calc(100vh - 2cm) !important;
+        overflow: visible !important;
+        width: 100% !important;
+        position: relative !important;
+    }
+    
+    /* Limpar estilos de edição das imagens */
+    .image-container-editavel {
+        border: none !important;
+        margin: 0 !important;
+        display: block !important;
+        page-break-inside: avoid;
+        position: relative !important;
+    }
+    
+    .relatorio-imagem-editavel {
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        page-break-inside: avoid;
+    }
+    
+
+    
+    /* Melhorar quebras de página */
+    .relatorio-header {
+        page-break-after: avoid;
+    }
+    
+    /* Garantir que imagens não sejam cortadas */
+    img {
+        page-break-inside: avoid;
+        max-width: 100% !important;
+        height: auto !important;
+    }
+@page {
+    size: A4;
+    margin: 0.5cm;
+}   /* Remover cabeçalhos e rodapés do navegador */
+    @top-left { content: none; }
+    @top-center { content: none; }
+    @top-right { content: none; }
+    @bottom-left { content: none; }
+    @bottom-center { content: none; }
+    @bottom-right { content: none; }
+}
+</style>
+
+<script>
+// Variáveis globais
+let selectedElement = null;
+let isDragging = false;
+let isResizing = false;
+let dragData = {};
+let resizeData = {};
+
+
+// Variáveis para drag and drop nativo
+let draggedElement = null;
+let dragOffset = { x: 0, y: 0 };
+
+// Inicialização
+document.addEventListener('DOMContentLoaded', function() {
+    initializeImageHandlers();
+    
+    // Desselecionar elementos ao clicar fora
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.image-container-editavel') && !e.target.closest('.resize-handle')) {
+            deselectAll();
+        }
+    });
+});
+
+// Inicializar manipuladores de imagem com HTML5 drag and drop
+function initializeImageHandlers() {
+    const imageContainers = document.querySelectorAll('.image-container-editavel');
+    console.log('Inicializando', imageContainers.length, 'containers de imagem');
+    
+    imageContainers.forEach((container, index) => {
+        // Configurar posicionamento inicial
+        container.style.position = 'absolute';
+        container.style.zIndex = '1';
+        container.draggable = true;
+        container.style.cursor = 'grab';
+        
+        // Adicionar transições suaves para melhor fluidez
+        container.style.transition = 'transform 0.1s ease-out, opacity 0.1s ease-out, box-shadow 0.1s ease-out';
+        container.style.willChange = 'transform';
+        
+        // Melhorar feedback visual ao hover
+        container.addEventListener('mouseenter', function() {
+            if (!this.classList.contains('dragging')) {
+                this.style.transform = 'scale(1.02)';
+                this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+            }
+        });
+        
+        container.addEventListener('mouseleave', function() {
+            if (!this.classList.contains('dragging')) {
+                this.style.transform = 'scale(1)';
+                this.style.boxShadow = 'none';
+            }
+        });
+        
+        // Posicionamento inicial
+        if (!container.style.left || !container.style.top) {
+            if (index === 0) {
+                container.style.top = '20px';
+                container.style.left = '20px';
+            } else {
+                container.style.top = '20px';
+                container.style.left = (20 + (index * 180)) + 'px';
+            }
+        }
+        
+        // Eventos de seleção
+        container.addEventListener('click', function(e) {
+            e.stopPropagation();
+            selectElement(this);
+        });
+        
+        // Eventos de drag and drop HTML5
+        container.addEventListener('dragstart', handleDragStart);
+        container.addEventListener('dragend', handleDragEnd);
+        
+        // Handles de redimensionamento
+        const handles = container.querySelectorAll('.resize-handle');
+        handles.forEach(handle => {
+            handle.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                startResize(e, container, this.dataset.direction);
+            });
+        });
+    });
+    
+    // Configurar área de drop
+    const editArea = document.getElementById('edit-area');
+    editArea.addEventListener('dragover', handleDragOver);
+    editArea.addEventListener('drop', handleDrop);
+}
+
+// Iniciar drag HTML5
+function handleDragStart(e) {
+    // Não permitir drag se estiver clicando em handle de redimensionamento
+    if (e.target.classList.contains('resize-handle') || e.target.closest('.resize-handles')) {
+        e.preventDefault();
+        return;
+    }
+    
+    draggedElement = this;
+    
+    // Calcular offset preciso do mouse em relação ao elemento
+    const rect = this.getBoundingClientRect();
+    const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+    
+    // Calcular offset considerando scroll da página para maior precisão
+    dragOffset.x = (e.clientX + scrollLeft) - (rect.left + scrollLeft);
+    dragOffset.y = (e.clientY + scrollTop) - (rect.top + scrollTop);
+    
+    // Estilo visual durante drag mais sutil para melhor experiência
+    this.style.opacity = '0.85';
+    this.style.transform = 'scale(1.01) rotate(1deg)';
+    this.style.zIndex = '999';
+    this.style.boxShadow = '0 8px 25px rgba(0,0,0,0.25)';
+    this.style.transition = 'none'; // Remover transição durante drag
+    this.style.cursor = 'grabbing';
+    
+    console.log('Iniciando drag da imagem com offset preciso:', dragOffset.x.toFixed(2), dragOffset.y.toFixed(2));
+}
+
+// Finalizar drag HTML5
+function handleDragEnd(e) {
+    if (draggedElement) {
+        // Restaurar estilos com transição suave
+        draggedElement.style.transition = 'transform 0.2s ease-out, opacity 0.2s ease-out, box-shadow 0.2s ease-out';
+        draggedElement.style.opacity = '1';
+        draggedElement.style.transform = 'scale(1) rotate(0deg)';
+        draggedElement.style.zIndex = '1';
+        draggedElement.style.boxShadow = 'none';
+        draggedElement.style.cursor = 'grab';
+        
+        // Remover classe de dragging se existir
+        draggedElement.classList.remove('dragging');
+        
+        // Restaurar transição padrão após animação
+        setTimeout(() => {
+            if (draggedElement) {
+                draggedElement.style.transition = 'transform 0.1s ease-out, opacity 0.1s ease-out, box-shadow 0.1s ease-out';
+            }
+        }, 200);
+        
+        draggedElement = null;
+        console.log('Drag finalizado com posicionamento preciso');
+    }
+}
+
+// Permitir drop na área de edição
+function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    
+    if (draggedElement) {
+        // Verificar se está próximo dos limites inferiores para ativar zona de nova página
+        const editArea = document.getElementById('edit-area');
+        const editRect = editArea.getBoundingClientRect();
+        const newPageDropZone = document.getElementById('new-page-drop-zone');
+        
+        // Calcular distância do mouse ao limite inferior da área de edição
+        const distanceFromBottom = (editRect.bottom - e.clientY);
+        
+        // Ativar zona de nova página quando próximo do limite inferior (50px)
+        if (distanceFromBottom < 50 && distanceFromBottom > -60) {
+            newPageDropZone.classList.add('active');
+            
+            // Verificar se está sobre a zona de drop
+            const dropZoneRect = newPageDropZone.getBoundingClientRect();
+            if (e.clientX >= dropZoneRect.left && e.clientX <= dropZoneRect.right &&
+                e.clientY >= dropZoneRect.top && e.clientY <= dropZoneRect.bottom) {
+                newPageDropZone.classList.add('drag-over');
+            } else {
+                newPageDropZone.classList.remove('drag-over');
+            }
+        } else {
+            newPageDropZone.classList.remove('active', 'drag-over');
+        }
+    }
+}
+
+// Processar drop na área de edição
+function handleDrop(e) {
+    e.preventDefault();
+    
+    const newPageDropZone = document.getElementById('new-page-drop-zone');
+    newPageDropZone.classList.remove('active', 'drag-over');
+    
+    if (draggedElement) {
+        // Verificar se foi solto na zona de nova página
+        const dropZoneRect = newPageDropZone.getBoundingClientRect();
+        const mouseX = e.clientX;
+        const mouseY = e.clientY;
+        
+        if (mouseX >= dropZoneRect.left && mouseX <= dropZoneRect.right &&
+            mouseY >= dropZoneRect.top && mouseY <= dropZoneRect.bottom) {
+            // Elemento foi solto na zona de nova página
+            console.log('Elemento solto na zona de nova página - criando nova página...');
+            criarNovaPagina(draggedElement);
+            return;
+        }
+        
+        // Calcular nova posição baseada na posição do mouse menos o offset
+        const editArea = document.getElementById('edit-area');
+        const editRect = editArea.getBoundingClientRect();
+        
+        // Calcular posição precisa considerando scroll da página
+        const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        
+        // Posição absoluta do mouse na página
+        const mousePageX = e.clientX + scrollLeft;
+        const mousePageY = e.clientY + scrollTop;
+        
+        // Posição absoluta da área de edição na página
+        const editAreaPageX = editRect.left + scrollLeft;
+        const editAreaPageY = editRect.top + scrollTop;
+        
+        // Calcular posição relativa à área de edição com offset preciso
+        const newX = mousePageX - editAreaPageX - dragOffset.x;
+        const newY = mousePageY - editAreaPageY - dragOffset.y;
+        
+        // Aplicar limites para manter a imagem visível na área de edição
+        const containerWidth = draggedElement.offsetWidth;
+        const containerHeight = draggedElement.offsetHeight;
+        
+        // Limites que permitem posicionamento mais preciso
+        const minX = -containerWidth * 0.8; // Permitir 80% da imagem fora da área
+        const minY = -containerHeight * 0.8;
+        const maxX = editArea.clientWidth - containerWidth * 0.2; // Manter 20% visível
+        const maxY = editArea.clientHeight - containerHeight * 0.2;
+        
+        // Aplicar restrições de forma mais suave
+        const constrainedX = Math.max(minX, Math.min(maxX, newX));
+        const constrainedY = Math.max(minY, Math.min(maxY, newY));
+        
+        // Aplicar nova posição com precisão de subpixel para movimento mais fluido
+        draggedElement.style.left = constrainedX + 'px';
+        draggedElement.style.top = constrainedY + 'px';
+        
+        console.log('Imagem posicionada em:', constrainedX.toFixed(2), constrainedY.toFixed(2));
+        
+        // Salvar posição automaticamente
+        salvarPosicaoAnexo(draggedElement);
+        
+        // Feedback visual de posicionamento mais sutil
+        draggedElement.style.transform = 'scale(1.005)';
+        setTimeout(() => {
+            if (draggedElement) {
+                draggedElement.style.transform = 'scale(1)';
+            }
+        }, 100);
+    }
+}
+
+// Inicializar manipuladores de caixa de texto
+
+
+// Selecionar elemento
+function selectElement(element) {
+    deselectAll();
+    element.classList.add('selected');
+    selectedElement = element;
+}
+
+// Desselecionar todos os elementos
+function deselectAll() {
+    document.querySelectorAll('.selected').forEach(el => {
+        el.classList.remove('selected');
+    });
+    selectedElement = null;
+}
+
+// Iniciar redimensionamento
+function startResize(e, container, direction) {
+    if (isDragging) return; // Não redimensionar se estiver arrastando
+    
+    isResizing = true;
+    isDragging = false; // Garantir que não está arrastando
+    selectElement(container);
+    
+    const img = container.querySelector('.relatorio-imagem-editavel');
+    const rect = img.getBoundingClientRect();
+    
+    resizeData = {
+        element: container,
+        img: img,
+        direction: direction,
+        startX: e.clientX,
+        startY: e.clientY,
+        startWidth: rect.width,
+        startHeight: rect.height,
+        startLeft: parseFloat(container.style.left) || 0,
+        startTop: parseFloat(container.style.top) || 0
+    };
+    
+    document.addEventListener('mousemove', doResize);
+    document.addEventListener('mouseup', stopResize);
+    
+    e.preventDefault();
+    e.stopPropagation();
+}
+
+// Executar redimensionamento
+function doResize(e) {
+    if (!isResizing) return;
+    
+    const deltaX = e.clientX - resizeData.startX;
+    const deltaY = e.clientY - resizeData.startY;
+    const direction = resizeData.direction;
+    
+    let newWidth = resizeData.startWidth;
+    let newHeight = resizeData.startHeight;
+    let newLeft = resizeData.startLeft;
+    let newTop = resizeData.startTop;
+    
+    // Calcular novas dimensões baseadas na direção
+    if (direction.includes('e')) {
+        newWidth = resizeData.startWidth + deltaX;
+    }
+    if (direction.includes('w')) {
+        newWidth = resizeData.startWidth - deltaX;
+        newLeft = resizeData.startLeft + deltaX;
+    }
+    if (direction.includes('s')) {
+        newHeight = resizeData.startHeight + deltaY;
+    }
+    if (direction.includes('n')) {
+        newHeight = resizeData.startHeight - deltaY;
+        newTop = resizeData.startTop + deltaY;
+    }
+    
+    // Aplicar tamanho mínimo
+    newWidth = Math.max(50, newWidth);
+    newHeight = Math.max(50, newHeight);
+    
+    // Aplicar as mudanças
+    resizeData.img.style.width = newWidth + 'px';
+    resizeData.img.style.height = newHeight + 'px';
+    resizeData.element.style.left = newLeft + 'px';
+    resizeData.element.style.top = newTop + 'px';
+}
+
+// Parar redimensionamento
+function stopResize() {
+    if (resizeData && resizeData.element) {
+        // Salvar posição e dimensões automaticamente
+        salvarPosicaoAnexo(resizeData.element);
+    }
+    
+    isResizing = false;
+    resizeData = {};
+    document.removeEventListener('mousemove', doResize);
+    document.removeEventListener('mouseup', stopResize);
+}
+
+
+
+
+
+// Resetar imagens
+function resetarImagens() {
+    if (confirm('Tem certeza que deseja resetar todas as imagens para suas posições e tamanhos originais?')) {
+        const imageContainers = document.querySelectorAll('.image-container-editavel');
+        
+        imageContainers.forEach(container => {
+            const img = container.querySelector('.relatorio-imagem-editavel');
+            
+            // Resetar estilos
+            container.style.position = 'relative';
+            container.style.left = '';
+            container.style.top = '';
+            img.style.width = '';
+            img.style.height = '';
+        });
+        
+
+        deselectAll();
+    }
+}
+
+// Função para gerar PDF diretamente sem mostrar a página
+function abrirPaginaImpressao() {
+    const estadoAtual = capturarEstadoAtual();
+    console.log('DEBUG: Estado capturado para impressão:', estadoAtual);
+    
+    const params = new URLSearchParams();
+    
+    // Adicionar dados dos campos de texto
+    const cliente = document.getElementById('cliente')?.value || '';
+    const numeroCliente = document.getElementById('numeroCliente')?.value || '';
+    const numeroPedido = document.getElementById('numeroPedido')?.value || '';
+    const obra = document.getElementById('obra')?.value || '';
+    const endereco = document.getElementById('endereco')?.value || '';
+    const telefone = document.getElementById('telefone')?.value || '';
+    const servicoExecutado = document.getElementById('servico_executado')?.value || '';
+    const observacoes = document.getElementById('observacoes')?.value || '';
+    const observacoesPedido = document.getElementById('observacoesPedido')?.value || '';
+    
+    if (cliente) params.append('cliente', cliente);
+    if (numeroCliente) params.append('numero_cliente', numeroCliente);
+    if (numeroPedido) params.append('numero_pedido', numeroPedido);
+    if (obra) params.append('obra', obra);
+    if (endereco) params.append('endereco', endereco);
+    if (telefone) params.append('telefone', telefone);
+    if (servicoExecutado) params.append('servico_executado', servicoExecutado);
+    if (observacoes) params.append('observacoes', observacoes);
+    if (observacoesPedido) params.append('observacoes_pedido', observacoesPedido);
+    
+    // Adicionar estado das imagens e textos
+    if (estadoAtual.imagens.length > 0 || estadoAtual.textos.length > 0) {
+        const estadoJson = JSON.stringify(estadoAtual);
+        console.log('DEBUG: Estado JSON antes de codificar:', estadoJson);
+        params.append('estado', encodeURIComponent(estadoJson));
+    }
+    
+    const url = `/imprimir-relatorio/{{ entrada.id }}?${params.toString()}`;
+    console.log('DEBUG: URL gerada:', url);
+    
+    // Mostrar indicador de carregamento
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.id = 'pdf-loading-indicator';
+    loadingIndicator.style.position = 'fixed';
+    loadingIndicator.style.top = '50%';
+    loadingIndicator.style.left = '50%';
+    loadingIndicator.style.transform = 'translate(-50%, -50%)';
+    loadingIndicator.style.background = 'rgba(0, 0, 0, 0.7)';
+    loadingIndicator.style.color = 'white';
+    loadingIndicator.style.padding = '20px';
+    loadingIndicator.style.borderRadius = '10px';
+    loadingIndicator.style.zIndex = '9999';
+    loadingIndicator.innerHTML = '<div style="text-align: center;"><i class="fas fa-spinner fa-spin" style="font-size: 2em;"></i><div style="margin-top: 10px;">Gerando PDF...</div></div>';
+    document.body.appendChild(loadingIndicator);
+    
+    // Criar iframe oculto para carregar a página sem mostrar ao usuário
+    const iframe = document.createElement('iframe');
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    iframe.style.position = 'absolute';
+    iframe.style.left = '-9999px';
+    iframe.style.top = '-9999px';
+    document.body.appendChild(iframe);
+    
+    // Carregar a página no iframe
+    iframe.src = url;
+    
+    // Aguardar carregamento do iframe e executar geração de PDF
+    iframe.onload = function() {
+        try {
+            // Tentar executar a função gerarPDF no contexto do iframe
+            setTimeout(() => {
+                try {
+                    iframe.contentWindow.gerarPDF();
+                    
+                    // Remover iframe e indicador de carregamento após um tempo
+                    setTimeout(() => {
+                        document.body.removeChild(iframe);
+                        document.body.removeChild(loadingIndicator);
+                    }, 3000);
+                } catch (error) {
+                    console.error('Erro ao gerar PDF no iframe:', error);
+                    
+                    // Em caso de erro, abrir em nova aba como fallback
+                    document.body.removeChild(loadingIndicator);
+                    document.body.removeChild(iframe);
+                    
+                    alert('Não foi possível gerar o PDF automaticamente. Abrindo página de impressão...');
+                    window.open(url, '_blank');
+                }
+            }, 1000);
+        } catch (error) {
+            console.error('Erro ao acessar iframe:', error);
+            document.body.removeChild(loadingIndicator);
+            document.body.removeChild(iframe);
+            
+            alert('Não foi possível gerar o PDF automaticamente. Abrindo página de impressão...');
+            window.open(url, '_blank');
+        }
+    };
+}
+
+// Função para criar nova página do relatório
+function criarNovaPagina(elementoArrastado) {
+    // Mostrar feedback visual
+    const newPageDropZone = document.getElementById('new-page-drop-zone');
+    newPageDropZone.style.background = 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)';
+    newPageDropZone.innerHTML = '✅ Nova página será criada!';
+    
+    // Capturar estado atual antes de criar nova página
+    const estadoAtual = capturarEstadoAtual();
+    
+    // Simular criação de nova página (aqui você implementaria a lógica real)
+    setTimeout(() => {
+        // Feedback de sucesso
+        newPageDropZone.innerHTML = '📄 Nova página criada com sucesso!';
+        newPageDropZone.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        
+        // Log para debug
+        console.log('Nova página criada com elemento:', elementoArrastado);
+        console.log('Estado capturado:', estadoAtual);
+        
+        // Aqui você pode implementar:
+        // 1. Enviar dados para o backend
+        // 2. Redirecionar para nova página
+        // 3. Atualizar interface
+        
+        // Exemplo de notificação ao usuário
+        alert('Nova página do relatório foi criada! O elemento foi movido para a nova página.');
+        
+        // Resetar zona de drop após 2 segundos
+        setTimeout(() => {
+            newPageDropZone.innerHTML = 'Solte aqui para criar nova página';
+            newPageDropZone.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+        }, 2000);
+        
+    }, 1000);
+}
+
+// Função para capturar estado atual das imagens e textos
+function capturarEstadoAtual() {
+    const estado = {
+        imagens: [],
+        textos: []
+    };
+    
+    // Capturar posições das imagens
+    const imagensEditaveis = document.querySelectorAll('.image-container-editavel');
+    imagensEditaveis.forEach((container, index) => {
+        const img = container.querySelector('.relatorio-imagem-editavel');
+        if (img) {
+            estado.imagens.push({
+                index: index,
+                caminho: img.src,
+                posicao_x: parseInt(container.style.left) || 0,
+                posicao_y: parseInt(container.style.top) || 0,
+                largura: container.offsetWidth,
+                altura: container.offsetHeight
+            });
+        }
+    });
+    
+    // Capturar textos personalizados (removido - não há mais caixas de texto)
+    
+    return estado;
+}
+
+
+
+// Função para salvar automaticamente a posição de um anexo
+function salvarPosicaoAnexo(container) {
+    const anexoId = container.getAttribute('data-anexo-id');
+    if (!anexoId) {
+        console.warn('Container sem data-anexo-id:', container);
+        return;
+    }
+    
+    const img = container.querySelector('.relatorio-imagem-editavel');
+    if (!img) {
+        console.warn('Imagem não encontrada no container:', container);
+        return;
+    }
+    
+    const positionData = {
+        anexo_id: parseInt(anexoId),
+        position_left: parseInt(container.style.left) || 0,
+        position_top: parseInt(container.style.top) || 0,
+        width: img.offsetWidth || 300,
+        height: img.offsetHeight || 200
+    };
+    
+    // Enviar dados para o servidor
+    fetch('/salvar-posicoes-anexos', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify([positionData])
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('Posição salva automaticamente para anexo:', anexoId);
+        } else {
+            console.error('Erro ao salvar posição:', data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro na requisição:', error);
+    });
+}
+
+
+
+
+
+</script>
+
+{% endblock %}

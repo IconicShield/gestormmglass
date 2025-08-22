@@ -80,6 +80,82 @@ th:first-child {
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
+/* Estilos para o modo de edição */
+.modal.edit-mode .relatorio-content {
+    position: relative;
+}
+
+.modal.edit-mode .relatorio-content::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 123, 255, 0.05);
+    border: 2px dashed rgba(0, 123, 255, 0.3);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.editable-text-box {
+    user-select: none;
+    transition: all 0.2s ease;
+}
+
+.editable-text-box:hover {
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.editable-text-box [contenteditable] {
+    user-select: text;
+}
+
+.editable-text-box [contenteditable]:focus {
+    background: rgba(255, 255, 255, 1);
+    border-radius: 4px;
+    padding: 2px;
+}
+
+.modal.edit-mode img {
+    transition: all 0.2s ease;
+}
+
+.modal.edit-mode img:hover {
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+/* Estilos para redimensionamento de imagens */
+.image-resize-container {
+    pointer-events: none;
+}
+
+.image-resize-container .resize-handle {
+    pointer-events: all;
+}
+
+.resize-handle {
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+}
+
+.resize-handle:hover {
+    background: #0056b3 !important;
+    transform: scale(1.2);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.modal.edit-mode .image-resize-container {
+    display: block;
+}
+
+.modal:not(.edit-mode) .image-resize-container {
+    display: none;
+}
+
 .anexo-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.15);
@@ -707,9 +783,9 @@ td:last-child {
                     {% endif %}
                 </td>
                 <td>
-                    <button type="button" class="btn btn-sm btn-warning" title="Relatório" data-toggle="modal" data-target="#relatorioModal-{{ entrada.id }}">
+                    <a href="{{ url_for('configurar_relatorio', id=entrada.id) }}" class="btn btn-sm btn-warning" title="Relatório">
                         <i class="fas fa-print"></i> Relatório
-                    </button>
+                    </a>
                     <form action="{{ url_for('arquivar_entrada', id=entrada.id) }}" method="post" style="display: inline;">
                         <button type="submit" class="btn btn-sm btn-secondary" title="Arquivar">
                             <i class="fas fa-archive"></i>
@@ -1007,7 +1083,7 @@ td:last-child {
                 <div class="modal-dialog" style="max-width: none; width: 100vw; height: 100vh; margin: 0;">
                     <div class="modal-content" style="height: 100%; border: 0; border-radius: 0;">
                         <div class="modal-header">
-                            <h5 class="modal-title" id="modalLabel-{{ entrada.id }}">Anexos de: {{ entrada.tipo }} #{{ entrada.numero_pedido }}</h5>
+                            <h5 class="modal-title" id="modalLabel-{{ entrada.id }}" style="text-transform: uppercase;">Anexos : Pedido #{{ entrada.numero_pedido }} - {% if entrada.cliente %}{{ entrada.cliente.nome }}{% else %}{{ entrada.cliente_nome_temp }}{% endif %}{% if entrada.obra %} ( {{ entrada.obra }} ){% endif %}</h5>
                             <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                         </div>
                         <div class="modal-body p-0" style="flex-grow: 1;">
@@ -1508,7 +1584,7 @@ td:last-child {
                         sanitize(pedido.nome_cliente || ''),
                         
                         // Trabalho
-                        sanitize(pedido.trabalho || ''),
+                        sanitize(pedido.obra || ''),
                         
                         // Status dropdown
                         `<div class="dropdown">
@@ -1546,9 +1622,9 @@ td:last-child {
                         
                         // Ações
                         `<div class="d-flex gap-1">
-                            <button type="button" class="btn btn-sm btn-warning" title="Relatório" onclick="openRelatorioModal(${sanitize(pedido.id)}, '${sanitize(pedido.numero_pedido)}', '${sanitize(pedido.data_cadastro)}', '${sanitize(pedido.nome_cliente)}', '${sanitize(pedido.numero_cliente || 'S/N')}', '${sanitize(pedido.trabalho || '')}')">
+                            <a href="/configurar-relatorio/${sanitize(pedido.id)}" class="btn btn-sm btn-warning" title="Relatório">
                                 <i class="fas fa-print"></i>
-                            </button>
+                            </a>
                             <button type="button" class="btn btn-sm btn-secondary" onclick="archivePedido(${sanitize(pedido.id)})" title="Arquivar">
                                 <i class="fas fa-archive"></i>
                             </button>
@@ -1685,7 +1761,7 @@ td:last-child {
                         `<button type="button" class="btn btn-outline-secondary btn-sm" style="color: var(--text-color);" data-toggle="modal" data-target="#clienteDetalhesModal-${sanitize(orcamento.cliente_id)}">${sanitize(orcamento.numero_cliente)}</button>` :
                         `<a href="/novo_cliente/rapido?nome=${encodeURIComponent(orcamento.nome_cliente || '')}" class="btn btn-success btn-sm" title="Cadastrar este cliente"><i class="fas fa-plus"></i></a>`,
                     sanitize(orcamento.nome_cliente || ''),
-                    sanitize(orcamento.trabalho || ''),
+                    sanitize(orcamento.obra || ''),
                     `<div class="dropdown">
                         <button class="btn ${getStatusButtonColor(orcamento.status)} btn-sm dropdown-toggle" type="button" id="status-btn-${sanitize(orcamento.id)}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             ${sanitize(orcamento.status || 'Não iniciado')}
@@ -1848,7 +1924,7 @@ td:last-child {
                                 </div>
                                 <div class="col-md-6">
                                     <h6><i class="fas fa-hard-hat text-primary"></i> Obra</h6><hr class="mt-1">
-                                    <p class="text-uppercase">${entrada.obra || entrada.trabalho || 'Não especificada'}</p>
+                                    <p class="text-uppercase">${entrada.obra || 'Não especificada'}</p>
 
                                     <h6 class="mt-4"><i class="fas fa-paperclip text-primary"></i> Anexos</h6><hr class="mt-1">
                                     <p class="text-muted small">Total de ${entrada.anexos_count || 0} anexo(s).</p>
@@ -2127,6 +2203,19 @@ td:last-child {
                 return;
             }
             
+            // Verifica se há filtros ativos - se sim, não atualiza as tabelas automaticamente
+            const searchQuery = document.getElementById('q')?.value?.trim() || '';
+            const selectedStatus = document.getElementById('status')?.value || '';
+            const hasActiveFilters = searchQuery !== '' || selectedStatus !== '';
+            
+            if (hasActiveFilters) {
+                console.log('Filtros ativos detectados - pulando atualização automática das tabelas');
+                // Ainda atualiza o dashboard, mas não as tabelas
+                window.PAINEL_SYSTEM.skipTableUpdate = true;
+            } else {
+                window.PAINEL_SYSTEM.skipTableUpdate = false;
+            }
+            
             console.log('Iniciando requisição para /api/dashboard_data');
             
             // Atualiza status para 'carregando' de forma segura
@@ -2190,10 +2279,12 @@ td:last-child {
                         updateDashboards(data.dashboard);
                     }
                     
-                    // Atualiza tabelas se disponíveis
-                    if (data.tables && typeof updateTables === 'function') {
+                    // Atualiza tabelas se disponíveis e não há filtros ativos
+                    if (data.tables && typeof updateTables === 'function' && !window.PAINEL_SYSTEM.skipTableUpdate) {
                         console.log('Atualizando tabelas...');
                         updateTables(data.tables);
+                    } else if (window.PAINEL_SYSTEM.skipTableUpdate) {
+                        console.log('Atualização de tabelas pulada devido a filtros ativos');
                     } else {
                         console.warn('Nenhum dado de tabela recebido ou função updateTables não disponível!');
                     }
@@ -2982,17 +3073,25 @@ td:last-child {
               
               dados.anexos.forEach(function(anexo, index) {
                   if (anexo.filename.toLowerCase().match(/\.(png|jpg|jpeg|gif|bmp|webp)$/)) {
-                      let imageClass = 'relatorio-imagem';
-                      let containerClass = 'text-center mb-4';
+                      let imageClass = 'relatorio-imagem-editavel';
+                      let containerClass = 'image-container-editavel';
                       
                       // Primeira imagem - layout especial
                       if (index === 0) {
                           imageClass += ' primeira-imagem';
-                          containerClass = 'container-imagens text-center mb-4';
                       }
                       
-                      anexosHTML += '<div class="' + containerClass + '">';
-                      anexosHTML += '<img src="/uploads/' + anexo.filename + '" class="' + imageClass + '" alt="' + anexo.filename + '" style="max-width: 100%; height: auto; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); object-fit: contain; page-break-inside: avoid;" onload="ajustarLayoutImagem(this, ' + index + ')">';
+                      anexosHTML += '<div class="' + containerClass + '" data-image-index="' + index + '" style="position: relative; display: inline-block; margin: 10px; border: 2px dashed transparent; min-width: 200px; min-height: 150px;">';
+                      anexosHTML += '<img src="/uploads/' + anexo.filename + '" class="' + imageClass + '" alt="' + anexo.filename + '" data-original-width="" data-original-height="" style="width: 300px; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); object-fit: contain; cursor: move; user-select: none;" draggable="false">';
+                      
+                      // Controles de redimensionamento
+                      anexosHTML += '<div class="resize-handles" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; display: none;">';
+                      anexosHTML += '<div class="resize-handle resize-nw" style="position: absolute; top: -5px; left: -5px; width: 10px; height: 10px; background: #007bff; cursor: nw-resize; pointer-events: all;"></div>';
+                      anexosHTML += '<div class="resize-handle resize-ne" style="position: absolute; top: -5px; right: -5px; width: 10px; height: 10px; background: #007bff; cursor: ne-resize; pointer-events: all;"></div>';
+                      anexosHTML += '<div class="resize-handle resize-sw" style="position: absolute; bottom: -5px; left: -5px; width: 10px; height: 10px; background: #007bff; cursor: sw-resize; pointer-events: all;"></div>';
+                      anexosHTML += '<div class="resize-handle resize-se" style="position: absolute; bottom: -5px; right: -5px; width: 10px; height: 10px; background: #007bff; cursor: se-resize; pointer-events: all;"></div>';
+                      anexosHTML += '</div>';
+                      
                       anexosHTML += '</div>';
                   }
               });
@@ -3001,8 +3100,8 @@ td:last-child {
           }
           
           let modalHTML = '<div class="modal fade" id="' + modalId + '" tabindex="-1" role="dialog" aria-labelledby="' + modalId + 'Label" aria-hidden="true">';
-          modalHTML += '<div class="modal-dialog modal-xl" role="document">';
-          modalHTML += '<div class="modal-content">';
+          modalHTML += '<div class="modal-dialog" style="max-width: 95vw; width: 95vw; height: 95vh; margin: 2.5vh auto;" role="document">';
+          modalHTML += '<div class="modal-content" style="height: 100%; display: flex; flex-direction: column;">';
           modalHTML += '<div class="modal-header">';
           modalHTML += '<h5 class="modal-title" id="' + modalId + 'Label" style="text-transform: uppercase;"><i class="fas fa-file-alt"></i> Relatório do Pedido</h5>';
           modalHTML += '<div class="ml-auto d-flex">';
@@ -3010,10 +3109,18 @@ td:last-child {
           modalHTML += '<i class="fas fa-print"></i> Imprimir</button>';
           modalHTML += '<button type="button" class="btn btn-success btn-sm mr-2" onclick="baixarPDFRelatorio(\'' + modalId + '\', \'' + dados.numeroPedido + '\')" style="text-transform: uppercase;">';
           modalHTML += '<i class="fas fa-download"></i> Download PDF</button>';
+          modalHTML += '<button type="button" class="btn btn-warning btn-sm mr-2" onclick="toggleEditMode(\'' + modalId + '\')" style="text-transform: uppercase;">';
+          modalHTML += '<i class="fas fa-edit"></i> <span id="edit-mode-text-' + modalId + '">Editar</span></button>';
+          modalHTML += '<button type="button" class="btn btn-info btn-sm mr-2" onclick="addTextBox(\'' + modalId + '\')" id="add-text-btn-' + modalId + '" style="text-transform: uppercase; display: none;">';
+          modalHTML += '<i class="fas fa-font"></i> Adicionar Texto</button>';
+          modalHTML += '<button type="button" class="btn btn-secondary btn-sm mr-2" onclick="resetLayout(\'' + modalId + '\')" id="reset-btn-' + modalId + '" style="text-transform: uppercase; display: none;">';
+          modalHTML += '<i class="fas fa-undo"></i> Resetar</button>';
           modalHTML += '<button type="button" class="close" data-dismiss="modal" aria-label="Close">';
           modalHTML += '<span aria-hidden="true">&times;</span></button></div></div>';
-          modalHTML += '<div class="modal-body" id="' + modalId + '-content" style="max-height: 70vh; overflow-y: auto; overflow-x: hidden;">';
-          modalHTML += '<div class="relatorio-container" style="background: white; border-radius: 8px; overflow: hidden;">';
+          modalHTML += '<div class="modal-body" id="' + modalId + '-content" style="flex: 1; overflow-y: auto; overflow-x: hidden; padding: 20px; background: #f5f5f5;">';
+          modalHTML += '<div class="a4-page-container" style="display: flex; justify-content: center; padding: 20px;">';
+          modalHTML += '<div class="relatorio-container a4-page" style="background: white; width: 210mm; min-height: 297mm; box-shadow: 0 4px 8px rgba(0,0,0,0.1), 0 6px 20px rgba(0,0,0,0.1); border: 1px solid #ddd; position: relative; overflow: visible;">';
+          modalHTML += '<div class="a4-page-limits"></div>';
           modalHTML += '<div class="relatorio-content" style="padding: 15px 30px 30px 30px;">';
           modalHTML += '<div class="info-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 25px;">';
           
@@ -3047,7 +3154,7 @@ td:last-child {
           }
           
           modalHTML += anexosHTML;
-          modalHTML += '</div></div></div></div></div></div>';
+          modalHTML += '</div></div></div></div></div></div></div>';
           
           // Adicionar modal ao DOM
           document.body.insertAdjacentHTML('beforeend', modalHTML);
@@ -3055,13 +3162,17 @@ td:last-child {
           // Mostrar modal
           $('#' + modalId).modal('show');
           
+
+          
           // Remover modal do DOM quando fechado
           $('#' + modalId).on('hidden.bs.modal', function () {
+              currentModalId = null;
               this.remove();
           });
       }
       
       function imprimirRelatorio(modalId) {
+          
           const conteudo = document.getElementById(modalId + '-content').innerHTML;
           const janelaImpressao = window.open('', '_blank');
           
@@ -3073,22 +3184,24 @@ td:last-child {
                   '<link href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" rel="stylesheet">' +
                   '<style>' +
                       '@media print {' +
-                          'body { margin: 0; padding: 10px 20px 20px 20px; font-size: 12pt; text-transform: uppercase; }' +
+                          'body { margin: 0; padding: 0; font-size: 12pt; text-transform: uppercase; }' +
                           '.container { max-width: none; width: 100%; margin: 0; padding: 0; }' +
-                          '.relatorio-imagem { max-width: 100%; height: auto; page-break-inside: avoid; margin-bottom: 15px; border: 1px solid #ddd; object-fit: contain; page-break-after: auto; }' +
-                          '.relatorio-imagem.primeira-imagem { max-height: 15cm; width: auto; display: block; margin: 1cm auto; }' +
-                          '.relatorio-imagem.imagem-pequena { max-height: 8cm; max-width: 45%; display: inline-block; margin: 0.5cm 0.25cm; vertical-align: top; }' +
-                          '.relatorio-imagem.imagem-media { max-height: 12cm; width: auto; display: block; margin: 0.75cm auto; }' +
-                          '.container-imagens { page-break-inside: avoid; margin-bottom: 1cm; }' +
-                          '.linha-imagens { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 0.5cm; margin-bottom: 0.75cm; page-break-inside: avoid; }' +
-                          '.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-bottom: 25px; }' +
+                          '.relatorio-imagem { width: 100%; max-width: 19cm; max-height: 25cm; height: auto; display: block; margin: 0; border: 1px solid #ddd; object-fit: contain; page-break-inside: avoid; page-break-after: auto; }' +
+                          '.relatorio-imagem.primeira-imagem { width: 100%; max-width: 19cm; max-height: 20cm; height: auto; display: block; margin: 0; border: 1px solid #ddd; object-fit: contain; page-break-inside: avoid; }' +
+                          '.relatorio-imagem-editavel { object-fit: contain; page-break-inside: avoid; border-radius: 8px; }' +
+                          '.image-container-editavel { page-break-inside: avoid; display: inline-block; position: relative; cursor: move; }' +
+                          '.resize-handles { display: none; }' +
+                          '.quebra-pagina-manual { page-break-before: always !important; height: 0 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; }' +
+                          '.quebra-pagina-manual .quebra-linha { display: none !important; }' +
+                          '.quebra-pagina-manual .btn-remover-quebra { display: none !important; }' +
+                          '.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }' +
                           '.info-item { background: #f8f9fa !important; padding: 20px !important; border-radius: 5px; border-left: 4px solid #007bff !important; }' +
                           '.info-label { font-weight: 600 !important; color: #495057 !important; font-size: 1.0em !important; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px !important; }' +
                           '.info-value { font-size: 1.3em !important; color: #212529 !important; font-weight: 500 !important; text-transform: uppercase !important; }' +
-                          '.relatorio-content { padding: 15px 30px 30px 30px !important; }' +
+                          '.relatorio-content { padding: 0 !important; }' +
                           '* { text-transform: uppercase !important; }' +
                       '}' +
-                      '@page { size: A4; margin: 1.5cm; }' +
+                      '@page { size: A4; margin: 0; }' +
                       'body { font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif; text-transform: uppercase; }' +
                   '</style>' +
               '</head>' +
@@ -3109,35 +3222,564 @@ td:last-child {
           janelaImpressao.document.close();
       }
       
-      // Função para ajustar layout inteligente das imagens
-      function ajustarLayoutImagem(img, index) {
-          const aspectRatio = img.naturalWidth / img.naturalHeight;
+      // Sistema de edição será reimplementado
+      
+
+      
+
+       
+
+               
+
+                        
+
+
+
+
+       
+
+
+             
+
+
+
+      
+      // Novo sistema de edição de relatórios
+      let editMode = {};
+      let dragData = {};
+      let textBoxCounter = 0;
+      
+      function toggleEditMode(modalId) {
+          const isEditing = editMode[modalId] || false;
+          editMode[modalId] = !isEditing;
           
-          if (index === 0) {
-              // Primeira imagem - sempre otimizada para caber após o texto
-              img.style.maxHeight = '60vh';
-              img.style.width = 'auto';
-              img.style.display = 'block';
-              img.style.margin = '20px auto';
-          } else if (aspectRatio > 1.5) {
-              // Imagem muito larga - ocupar linha inteira
-              img.classList.add('imagem-media');
-              img.style.maxHeight = '50vh';
-              img.style.width = 'auto';
-              img.style.display = 'block';
-              img.style.margin = '15px auto';
+          const editBtn = document.getElementById('edit-mode-text-' + modalId);
+          const addTextBtn = document.getElementById('add-text-btn-' + modalId);
+          const resetBtn = document.getElementById('reset-btn-' + modalId);
+          const modal = document.getElementById(modalId);
+          
+          if (editMode[modalId]) {
+              editBtn.textContent = 'Sair da Edição';
+              addTextBtn.style.display = 'inline-block';
+              resetBtn.style.display = 'inline-block';
+              modal.classList.add('edit-mode');
+              enableImageDragging(modalId);
           } else {
-              // Imagem pode ser agrupada
-              img.classList.add('imagem-pequena');
-              img.style.maxHeight = '40vh';
-              img.style.width = 'auto';
-              img.style.display = 'inline-block';
-              img.style.margin = '10px 5px';
-              img.style.verticalAlign = 'top';
+              editBtn.textContent = 'Editar';
+              addTextBtn.style.display = 'none';
+              resetBtn.style.display = 'none';
+              modal.classList.remove('edit-mode');
+              disableImageDragging(modalId);
           }
       }
       
-      function baixarPDFRelatorio(modalId, numeroPedido) {
+      function enableImageDragging(modalId) {
+          const images = document.querySelectorAll('#' + modalId + ' .relatorio-content img');
+          images.forEach(img => {
+              img.style.cursor = 'move';
+              img.style.border = '2px dashed #007bff';
+              img.draggable = false;
+              
+              img.addEventListener('mousedown', startImageDrag);
+              addResizeHandles(img);
+          });
+      }
+      
+      function disableImageDragging(modalId) {
+          const images = document.querySelectorAll('#' + modalId + ' .relatorio-content img');
+          images.forEach(img => {
+              img.style.cursor = 'default';
+              img.style.border = 'none';
+              img.removeEventListener('mousedown', startImageDrag);
+              removeResizeHandles(img);
+          });
+      }
+      
+      function startImageDrag(e) {
+          // Verificar se o clique foi em um handle de redimensionamento
+          if (e.target.classList.contains('resize-handle')) {
+              return;
+          }
+          
+          // Verificar se o clique foi em um container de resize
+          if (e.target.classList.contains('resize-container')) {
+              return;
+          }
+          
+          e.preventDefault();
+          const img = e.target;
+          const container = img.closest('.relatorio-content');
+          
+          // Obter posição atual da imagem usando offsetLeft/offsetTop para preservar posição original
+          const currentLeft = parseInt(img.style.left) || img.offsetLeft;
+          const currentTop = parseInt(img.style.top) || img.offsetTop;
+          
+          const containerRect = container.getBoundingClientRect();
+          
+          dragData.element = img;
+          dragData.offsetX = e.clientX - containerRect.left - currentLeft;
+          dragData.offsetY = e.clientY - containerRect.top - currentTop;
+          dragData.container = container;
+          
+          // Garantir que a imagem tenha posição absoluta
+          if (img.style.position !== 'absolute') {
+              img.style.position = 'absolute';
+              img.style.left = currentLeft + 'px';
+              img.style.top = currentTop + 'px';
+          }
+          img.style.zIndex = '1000';
+          
+          document.addEventListener('mousemove', dragImage);
+          document.addEventListener('mouseup', stopImageDrag);
+      }
+      
+      function dragImage(e) {
+          if (!dragData.element) return;
+          
+          const container = dragData.container;
+          const containerRect = container.getBoundingClientRect();
+          
+          let newX = e.clientX - containerRect.left - dragData.offsetX;
+          let newY = e.clientY - containerRect.top - dragData.offsetY;
+          
+          // Permitir movimento livre - apenas evitar que a imagem saia completamente da área visível
+          // Manter pelo menos 50px da imagem visível em cada direção
+          const minVisible = 50;
+          newX = Math.max(-dragData.element.offsetWidth + minVisible, Math.min(newX, container.clientWidth - minVisible));
+          newY = Math.max(-dragData.element.offsetHeight + minVisible, Math.min(newY, container.clientHeight - minVisible));
+          
+          dragData.element.style.left = newX + 'px';
+          dragData.element.style.top = newY + 'px';
+          
+          // Atualizar posição dos handles de redimensionamento
+          updateResizeHandles(dragData.element);
+      }
+      
+      function stopImageDrag() {
+          document.removeEventListener('mousemove', dragImage);
+          document.removeEventListener('mouseup', stopImageDrag);
+          dragData = {};
+      }
+      
+      function addResizeHandles(img) {
+          // Remove handles existentes
+          removeResizeHandles(img);
+          
+          // Inicializar array de handles
+          img.resizeHandles = [];
+          
+          // Garantir que a imagem tenha posição absoluta
+          const relativeContainer = img.closest('.relatorio-content');
+          
+          if (!img.style.position || img.style.position !== 'absolute') {
+              // Preservar a posição original da imagem
+              const containerStyle = window.getComputedStyle(relativeContainer);
+              
+              // Obter padding do container para ajustar a posição
+              const containerPaddingLeft = parseInt(containerStyle.paddingLeft) || 0;
+              const containerPaddingTop = parseInt(containerStyle.paddingTop) || 0;
+              
+              // Calcular posição real da imagem considerando o padding do container
+              const imgLeft = img.offsetLeft - containerPaddingLeft;
+              const imgTop = img.offsetTop - containerPaddingTop;
+              
+              img.style.position = 'absolute';
+              img.style.left = Math.max(0, imgLeft) + 'px';
+              img.style.top = Math.max(0, imgTop) + 'px';
+              
+              // Preservar dimensões originais se não estiverem definidas
+              if (!img.style.width) {
+                  img.style.width = img.offsetWidth + 'px';
+              }
+              if (!img.style.height) {
+                  img.style.height = img.offsetHeight + 'px';
+              }
+          }
+          
+          // Adicionar borda de edição diretamente na imagem
+          img.style.border = '2px dashed #007bff';
+          
+          // Criar array para armazenar handles
+          img.resizeHandles = [];
+          
+          // Criar handles de redimensionamento
+          const handles = [
+              {pos: 'nw', cursor: 'nw-resize'},
+              {pos: 'ne', cursor: 'ne-resize'},
+              {pos: 'sw', cursor: 'sw-resize'},
+              {pos: 'se', cursor: 'se-resize'},
+              {pos: 'n', cursor: 'n-resize'},
+              {pos: 's', cursor: 's-resize'},
+              {pos: 'e', cursor: 'e-resize'},
+              {pos: 'w', cursor: 'w-resize'}
+          ];
+          
+          handles.forEach(handle => {
+              const handleEl = document.createElement('div');
+              handleEl.className = `resize-handle resize-${handle.pos}`;
+              handleEl.style.cssText = `
+                  position: absolute;
+                  background: #007bff;
+                  border: 2px solid white;
+                  width: 10px;
+                  height: 10px;
+                  cursor: ${handle.cursor};
+                  pointer-events: all;
+                  z-index: 9999;
+              `;
+              
+              // Posicionar handle em relação à imagem
+              updateHandlePosition(handleEl, handle.pos, img);
+              
+              handleEl.addEventListener('mousedown', (e) => startImageResize(e, img, handle.pos));
+              relativeContainer.appendChild(handleEl);
+              img.resizeHandles.push(handleEl);
+          });
+          
+      }
+      
+      function updateHandlePosition(handleEl, position, img) {
+          // Obter posição real da imagem
+          const imgRect = img.getBoundingClientRect();
+          const container = img.closest('.relatorio-content');
+          const containerRect = container.getBoundingClientRect();
+          
+          // Calcular posição relativa ao container
+          const imgLeft = imgRect.left - containerRect.left;
+          const imgTop = imgRect.top - containerRect.top;
+          const imgWidth = img.offsetWidth;
+          const imgHeight = img.offsetHeight;
+          
+          switch(position) {
+              case 'nw':
+                  handleEl.style.left = (imgLeft - 5) + 'px';
+                  handleEl.style.top = (imgTop - 5) + 'px';
+                  break;
+              case 'ne':
+                  handleEl.style.left = (imgLeft + imgWidth - 5) + 'px';
+                  handleEl.style.top = (imgTop - 5) + 'px';
+                  break;
+              case 'sw':
+                  handleEl.style.left = (imgLeft - 5) + 'px';
+                  handleEl.style.top = (imgTop + imgHeight - 5) + 'px';
+                  break;
+              case 'se':
+                  handleEl.style.left = (imgLeft + imgWidth - 5) + 'px';
+                  handleEl.style.top = (imgTop + imgHeight - 5) + 'px';
+                  break;
+              case 'n':
+                  handleEl.style.left = (imgLeft + imgWidth/2 - 5) + 'px';
+                  handleEl.style.top = (imgTop - 5) + 'px';
+                  break;
+              case 's':
+                  handleEl.style.left = (imgLeft + imgWidth/2 - 5) + 'px';
+                  handleEl.style.top = (imgTop + imgHeight - 5) + 'px';
+                  break;
+              case 'e':
+                  handleEl.style.left = (imgLeft + imgWidth - 5) + 'px';
+                  handleEl.style.top = (imgTop + imgHeight/2 - 5) + 'px';
+                  break;
+              case 'w':
+                  handleEl.style.left = (imgLeft - 5) + 'px';
+                  handleEl.style.top = (imgTop + imgHeight/2 - 5) + 'px';
+                  break;
+          }
+      }
+      
+      function removeResizeHandles(img) {
+          if (img.resizeHandles) {
+              img.resizeHandles.forEach(handle => handle.remove());
+              img.resizeHandles = [];
+          }
+          // Remover borda de edição
+          img.style.border = 'none';
+      }
+      
+      function updateResizeHandles(img) {
+          if (img.resizeHandles && img.resizeHandles.length > 0) {
+              img.resizeHandles.forEach((handle, index) => {
+                  const positions = ['nw', 'ne', 'sw', 'se', 'n', 's', 'e', 'w'];
+                  updateHandlePosition(handle, positions[index], img);
+              });
+          }
+      }
+      
+      function startImageResize(e, img, direction) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          const startX = e.clientX;
+          const startY = e.clientY;
+          const startWidth = img.offsetWidth;
+          const startHeight = img.offsetHeight;
+          const startLeft = parseInt(img.style.left) || 0;
+          const startTop = parseInt(img.style.top) || 0;
+          const aspectRatio = startWidth / startHeight;
+          
+          function doResize(e) {
+              const deltaX = e.clientX - startX;
+              const deltaY = e.clientY - startY;
+              
+              let newWidth = startWidth;
+              let newHeight = startHeight;
+              let newLeft = startLeft;
+              let newTop = startTop;
+              
+              // Calcular novas dimensões baseado na direção
+              switch(direction) {
+                  case 'se':
+                      newWidth = startWidth + deltaX;
+                      newHeight = startHeight + deltaY;
+                      break;
+                  case 'sw':
+                      newWidth = startWidth - deltaX;
+                      newHeight = startHeight + deltaY;
+                      newLeft = startLeft + deltaX;
+                      break;
+                  case 'ne':
+                      newWidth = startWidth + deltaX;
+                      newHeight = startHeight - deltaY;
+                      newTop = startTop + deltaY;
+                      break;
+                  case 'nw':
+                      newWidth = startWidth - deltaX;
+                      newHeight = startHeight - deltaY;
+                      newLeft = startLeft + deltaX;
+                      newTop = startTop + deltaY;
+                      break;
+                  case 'e':
+                      newWidth = startWidth + deltaX;
+                      newHeight = newWidth / aspectRatio;
+                      break;
+                  case 'w':
+                      newWidth = startWidth - deltaX;
+                      newHeight = newWidth / aspectRatio;
+                      newLeft = startLeft + deltaX;
+                      break;
+                  case 's':
+                      newHeight = startHeight + deltaY;
+                      newWidth = newHeight * aspectRatio;
+                      break;
+                  case 'n':
+                      newHeight = startHeight - deltaY;
+                      newWidth = newHeight * aspectRatio;
+                      newTop = startTop + deltaY;
+                      break;
+              }
+              
+              // Aplicar dimensões mínimas após o cálculo
+              newWidth = Math.max(50, newWidth);
+              newHeight = Math.max(50, newHeight);
+              
+
+              
+              // Validar limites do container com mais flexibilidade
+              const relativeContainer = img.closest('.relatorio-content');
+              const containerWidth = relativeContainer.clientWidth;
+              const containerHeight = relativeContainer.clientHeight;
+              
+              // Permitir que a imagem seja maior que o container, mas manter posição mínima
+              if (newLeft < 0) {
+                  newLeft = 0;
+              }
+              if (newTop < 0) {
+                  newTop = 0;
+              }
+              
+              // Limitar apenas se a imagem ficar completamente fora do container
+              if (newLeft > containerWidth - 50) {
+                  newLeft = containerWidth - 50;
+              }
+              if (newTop > containerHeight - 50) {
+                  newTop = containerHeight - 50;
+              }
+              
+              // Garantir dimensões mínimas
+              newWidth = Math.max(50, newWidth);
+              newHeight = Math.max(50, newHeight);
+              
+              // Permitir dimensões maiores que o container para flexibilidade de edição
+              // Removendo limites máximos para permitir aumento livre das imagens
+              
+              // Aplicar novas dimensões
+              img.style.width = newWidth + 'px';
+              img.style.height = newHeight + 'px';
+              img.style.left = newLeft + 'px';
+              img.style.top = newTop + 'px';
+              
+              // Atualizar posição dos handles
+              updateResizeHandles(img);
+          }
+          
+          function stopResize() {
+              document.removeEventListener('mousemove', doResize);
+              document.removeEventListener('mouseup', stopResize);
+          }
+          
+          document.addEventListener('mousemove', doResize);
+          document.addEventListener('mouseup', stopResize);
+      }
+      
+      function addTextBox(modalId) {
+          const container = document.querySelector('#' + modalId + ' .relatorio-content');
+          textBoxCounter++;
+          
+          const textBox = document.createElement('div');
+          textBox.className = 'editable-text-box';
+          textBox.id = 'textbox-' + modalId + '-' + textBoxCounter;
+          textBox.style.cssText = `
+              position: absolute;
+              top: 50px;
+              left: 50px;
+              min-width: 200px;
+              min-height: 30px;
+              padding: 10px;
+              border: 2px dashed #007bff;
+              background: rgba(255, 255, 255, 0.9);
+              cursor: move;
+              z-index: 100;
+              font-family: Arial, sans-serif;
+              font-size: 14px;
+          `;
+          
+          const textContent = document.createElement('div');
+          textContent.contentEditable = true;
+          textContent.textContent = 'Clique para editar texto';
+          textContent.style.cssText = `
+              outline: none;
+              cursor: text;
+          `;
+          
+          const removeBtn = document.createElement('button');
+          removeBtn.innerHTML = '×';
+          removeBtn.style.cssText = `
+              position: absolute;
+              top: -10px;
+              right: -10px;
+              width: 20px;
+              height: 20px;
+              border: none;
+              border-radius: 50%;
+              background: #dc3545;
+              color: white;
+              cursor: pointer;
+              font-size: 12px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+          `;
+          
+          removeBtn.onclick = function(e) {
+              e.stopPropagation();
+              if (confirm('Remover esta caixa de texto?')) {
+                  textBox.remove();
+              }
+          };
+          
+          textBox.appendChild(textContent);
+          textBox.appendChild(removeBtn);
+          container.appendChild(textBox);
+          
+          // Adicionar eventos de arrastar
+          textBox.addEventListener('mousedown', function(e) {
+              if (e.target === textContent) return;
+              startTextBoxDrag(e, textBox);
+          });
+          
+          // Focar no texto
+          textContent.focus();
+          textContent.select();
+      }
+      
+      function startTextBoxDrag(e, textBox) {
+          e.preventDefault();
+          const rect = textBox.getBoundingClientRect();
+          const container = textBox.closest('.relatorio-content');
+          const containerRect = container.getBoundingClientRect();
+          
+          dragData.element = textBox;
+          dragData.offsetX = e.clientX - rect.left;
+          dragData.offsetY = e.clientY - rect.top;
+          dragData.container = container;
+          dragData.containerRect = containerRect;
+          
+          document.addEventListener('mousemove', dragTextBox);
+          document.addEventListener('mouseup', stopTextBoxDrag);
+      }
+      
+      function dragTextBox(e) {
+          if (!dragData.element) return;
+          
+          const container = dragData.container;
+          const containerRect = dragData.containerRect;
+          
+          let newX = e.clientX - containerRect.left - dragData.offsetX + container.scrollLeft;
+          let newY = e.clientY - containerRect.top - dragData.offsetY + container.scrollTop;
+          
+          // Permitir movimento livre - apenas evitar que o elemento saia completamente da área visível
+          // Manter pelo menos 50px do elemento visível em cada direção
+          const minVisible = 50;
+          newX = Math.max(-dragData.element.offsetWidth + minVisible, Math.min(newX, container.scrollWidth - minVisible));
+          newY = Math.max(-dragData.element.offsetHeight + minVisible, Math.min(newY, container.scrollHeight - minVisible));
+          
+          dragData.element.style.left = newX + 'px';
+          dragData.element.style.top = newY + 'px';
+      }
+      
+      function stopTextBoxDrag() {
+          document.removeEventListener('mousemove', dragTextBox);
+          document.removeEventListener('mouseup', stopTextBoxDrag);
+          dragData = {};
+      }
+      
+      function resetLayout(modalId) {
+          if (confirm('Resetar todas as alterações de layout?')) {
+              // Resetar imagens
+              const images = document.querySelectorAll('#' + modalId + ' .relatorio-content img');
+              images.forEach(img => {
+                  // Remover handles de redimensionamento
+                  removeResizeHandles(img);
+                  
+                  // Resetar estilos
+                  img.style.position = '';
+                  img.style.left = '';
+                  img.style.top = '';
+                  img.style.zIndex = '';
+                  img.style.width = '';
+                  img.style.height = '';
+                  img.style.cursor = 'default';
+                  img.style.border = 'none';
+                  
+                  // Remover event listeners
+                  img.removeEventListener('mousedown', startImageDrag);
+              });
+              
+              // Remover caixas de texto
+              const textBoxes = document.querySelectorAll('#' + modalId + ' .editable-text-box');
+              textBoxes.forEach(box => box.remove());
+              
+              // Remover containers de redimensionamento órfãos
+              const resizeContainers = document.querySelectorAll('#' + modalId + ' .image-resize-container');
+              resizeContainers.forEach(container => container.remove());
+              
+              textBoxCounter = 0;
+              
+              // Desabilitar modo de edição
+              const modal = document.getElementById(modalId);
+              modal.classList.remove('edit-mode');
+              
+              // Resetar botões
+              const editBtn = document.querySelector('#' + modalId + ' .edit-btn');
+              const addTextBtn = document.querySelector('#' + modalId + ' .add-text-btn');
+              const resetBtn = document.querySelector('#' + modalId + ' .reset-btn');
+              
+              if (editBtn) editBtn.textContent = 'Editar';
+              if (addTextBtn) addTextBtn.style.display = 'none';
+              if (resetBtn) resetBtn.style.display = 'none';
+          }
+      }
+      
+         function baixarPDFRelatorio(modalId, numeroPedido) {
           // Carregar bibliotecas se não estiverem disponíveis
           if (typeof html2canvas === 'undefined' || typeof window.jspdf === 'undefined') {
               const script1 = document.createElement('script');
@@ -3157,38 +3799,118 @@ td:last-child {
       }
       
       function gerarPDF(modalId, numeroPedido) {
-          const elemento = document.querySelector('#' + modalId + ' .relatorio-container');
           
-          html2canvas(elemento, {
-              scale: 2,
-              useCORS: true,
-              allowTaint: true
-          }).then(canvas => {
-              const { jsPDF } = window.jspdf;
-              const imgData = canvas.toDataURL('image/png');
-              const pdf = new jsPDF('p', 'mm', 'a4');
-              
-              const imgWidth = 210; // A4 width in mm
-              const pageHeight = 295; // A4 height in mm
-              const imgHeight = (canvas.height * imgWidth) / canvas.width;
-              let heightLeft = imgHeight;
-              
-              let position = 0;
-              
-              pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-              heightLeft -= pageHeight;
-              
-              while (heightLeft >= 0) {
-                  position = heightLeft - imgHeight;
-                  pdf.addPage();
+          const elemento = document.querySelector('#' + modalId + ' .relatorio-container');
+          const quebrasManual = elemento.querySelectorAll('.quebra-pagina-manual');
+          
+          if (quebrasManual.length === 0) {
+              // Método original se não há quebras manuais
+              html2canvas(elemento, {
+                  scale: 2,
+                  useCORS: true,
+                  allowTaint: true
+              }).then(canvas => {
+                  const { jsPDF } = window.jspdf;
+                  const imgData = canvas.toDataURL('image/png');
+                  const pdf = new jsPDF('p', 'mm', 'a4');
+                  
+                  const imgWidth = 210;
+                  const pageHeight = 295;
+                  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                  let heightLeft = imgHeight;
+                  let position = 0;
+                  
                   pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
                   heightLeft -= pageHeight;
+                  
+                  while (heightLeft >= 0) {
+                      position = heightLeft - imgHeight;
+                      pdf.addPage();
+                      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                      heightLeft -= pageHeight;
+                  }
+                  
+                  pdf.save('relatorio-pedido-' + numeroPedido + '.pdf');
+              }).catch(error => {
+                  console.error('Erro ao gerar PDF:', error);
+                  alert('Erro ao gerar PDF. Tente usar a função de impressão.');
+              });
+          } else {
+              // Método com quebras de página manuais
+              gerarPDFComQuebras(elemento, numeroPedido, quebrasManual);
+          }
+      }
+      
+      function gerarPDFComQuebras(elemento, numeroPedido, quebrasManual) {
+          const { jsPDF } = window.jspdf;
+          const pdf = new jsPDF('p', 'mm', 'a4');
+          let paginaAtual = 0;
+          
+          // Criar seções baseadas nas quebras de página
+          const secoes = [];
+          let conteudoAtual = [];
+          
+          Array.from(elemento.children).forEach(child => {
+              if (child.classList.contains('quebra-pagina-manual')) {
+                  if (conteudoAtual.length > 0) {
+                      secoes.push(conteudoAtual);
+                      conteudoAtual = [];
+                  }
+              } else {
+                  conteudoAtual.push(child);
+              }
+          });
+          
+          // Adicionar última seção se houver conteúdo
+          if (conteudoAtual.length > 0) {
+              secoes.push(conteudoAtual);
+          }
+          
+          // Processar cada seção
+          processarSecoesPDF(secoes, 0, pdf, numeroPedido);
+      }
+      
+      function processarSecoesPDF(secoes, indice, pdf, numeroPedido) {
+          if (indice >= secoes.length) {
+              pdf.save('relatorio-pedido-' + numeroPedido + '.pdf');
+              return;
+          }
+          
+          // Criar container temporário para a seção atual
+          const containerTemp = document.createElement('div');
+          containerTemp.style.cssText = 'position: absolute; left: -9999px; top: -9999px; background: white; padding: 20px;';
+          
+          secoes[indice].forEach(elemento => {
+              containerTemp.appendChild(elemento.cloneNode(true));
+          });
+          
+          document.body.appendChild(containerTemp);
+          
+          html2canvas(containerTemp, {
+              scale: 2,
+              useCORS: true,
+              allowTaint: true,
+              backgroundColor: '#ffffff'
+          }).then(canvas => {
+              if (indice > 0) {
+                  pdf.addPage();
               }
               
-              pdf.save('relatorio-pedido-' + numeroPedido + '.pdf');
+              const imgData = canvas.toDataURL('image/png');
+              const imgWidth = 210;
+              const imgHeight = (canvas.height * imgWidth) / canvas.width;
+              
+              pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+              
+              // Remover container temporário
+              document.body.removeChild(containerTemp);
+              
+              // Processar próxima seção
+              processarSecoesPDF(secoes, indice + 1, pdf, numeroPedido);
           }).catch(error => {
-              console.error('Erro ao gerar PDF:', error);
-              alert('Erro ao gerar PDF. Tente usar a função de impressão.');
+              console.error('Erro ao processar seção:', error);
+              document.body.removeChild(containerTemp);
+              processarSecoesPDF(secoes, indice + 1, pdf, numeroPedido);
           });
       }
       
@@ -3323,6 +4045,32 @@ td:last-child {
               }
           }, 5000);
       }
+      
+      // Event listeners para detectar mudanças nos filtros
+      document.addEventListener('DOMContentLoaded', function() {
+          const searchInput = document.getElementById('q');
+          const statusSelect = document.getElementById('status');
+          const filterForm = document.querySelector('form[method="GET"]');
+          
+          // Função para limpar a flag quando filtros são aplicados
+          function clearSkipTableUpdateFlag() {
+              if (window.PAINEL_SYSTEM) {
+                  window.PAINEL_SYSTEM.skipTableUpdate = false;
+                  console.log('Flag skipTableUpdate limpa - tabelas podem ser atualizadas novamente');
+              }
+          }
+          
+          // Limpa a flag quando o formulário é submetido
+          if (filterForm) {
+              filterForm.addEventListener('submit', clearSkipTableUpdateFlag);
+          }
+          
+          // Limpa a flag quando o botão de limpar é clicado
+           const clearButton = document.querySelector("a[href='{{ url_for('painel_controle') }}']");
+           if (clearButton) {
+               clearButton.addEventListener('click', clearSkipTableUpdateFlag);
+           }
+      });
       </script>
 
 <style>
@@ -3433,6 +4181,67 @@ td:last-child {
     .modal-footer {
         background-color: var(--bg-secondary) !important;
         border-color: var(--border-color) !important;
+    }
+    
+    /* Estilos para página A4 */
+    .a4-page-container {
+        background: #f5f5f5;
+        min-height: 100%;
+        padding: 20px;
+    }
+    
+    .a4-page {
+        width: 210mm !important;
+        min-height: 297mm !important;
+        max-width: 210mm !important;
+        background: white !important;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1), 0 6px 20px rgba(0,0,0,0.1) !important;
+        border: 1px solid #ddd !important;
+        margin: 0 auto !important;
+        position: relative !important;
+        overflow: visible !important;
+    }
+    
+    .a4-page::before {
+        content: '';
+        position: absolute;
+        top: -1px;
+        left: -1px;
+        right: -1px;
+        bottom: -1px;
+        border: 2px solid #007bff;
+        border-radius: 2px;
+        opacity: 0.3;
+        pointer-events: none;
+        z-index: 1;
+    }
+    
+    .a4-page .relatorio-content {
+        position: relative;
+        z-index: 2;
+        padding: 10mm !important;
+        min-height: calc(297mm - 20mm);
+    }
+    
+    /* Limites visuais para imagens - removidos para permitir redimensionamento livre */
+    .image-container-editavel {
+        /* max-width removido para permitir redimensionamento livre */
+    }
+    
+    .relatorio-imagem-editavel {
+        /* max-width e height auto removidos para permitir redimensionamento livre */
+    }
+    
+    /* Indicador de limites da página */
+    .a4-page-limits {
+        position: absolute;
+        top: 20mm;
+        left: 20mm;
+        right: 20mm;
+        bottom: 20mm;
+        border: 1px dashed #ccc;
+        pointer-events: none;
+        z-index: 1;
     }
 </style>
 

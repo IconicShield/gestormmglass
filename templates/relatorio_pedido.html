@@ -39,50 +39,31 @@
             }
             
             .relatorio-imagem {
-                max-width: 100%;
+                width: 100%; /* Largura total da página */
+                max-width: 19cm; /* Largura A4 (21cm) menos bordas de 1cm cada lado */
+                max-height: 25cm; /* Limite vertical para evitar quebra de página */
                 height: auto;
-                page-break-inside: avoid;
-                margin-bottom: 15px;
+                display: block;
+                margin: 0.5cm auto; /* Centralizar com margem automática */
                 border: 1px solid #ddd;
                 object-fit: contain;
+                page-break-inside: avoid;
+                page-break-after: auto;
             }
             
             .relatorio-imagem.primeira-imagem {
-                max-height: 15cm;
-                width: auto;
+                width: 100%;
+                max-width: 19cm; /* Largura A4 menos bordas */
+                max-height: 20cm; /* Espaço disponível na primeira folha após informações */
+                height: auto;
                 display: block;
-                margin: 1cm auto;
-            }
-            
-            .relatorio-imagem.imagem-pequena {
-                max-height: 8cm;
-                max-width: 45%;
-                display: inline-block;
-                margin: 0.5cm 0.25cm;
-                vertical-align: top;
-            }
-            
-            .relatorio-imagem.imagem-media {
-                max-height: 12cm;
-                width: auto;
-                display: block;
-                margin: 0.75cm auto;
-            }
-            
-            .container-imagens {
-                page-break-inside: avoid;
-                margin-bottom: 1cm;
-            }
-            
-            .linha-imagens {
-                display: flex;
-                flex-wrap: wrap;
-                justify-content: center;
-                align-items: flex-start;
-                gap: 0.5cm;
-                margin-bottom: 0.75cm;
+                margin: 1cm auto; /* Centralizar */
+                border: 1px solid #ddd;
+                object-fit: contain;
                 page-break-inside: avoid;
             }
+            
+
             
             .info-grid {
                 display: grid;
@@ -104,7 +85,7 @@
         
         @page {
             size: A4;
-            margin: 2cm;
+            margin: 1cm;
         }
         
         /* Regra universal para caixa alta */
@@ -174,37 +155,31 @@
         }
         
         .relatorio-imagem {
-            max-width: 100%;
+            width: 100%; /* Largura total disponível */
+            max-width: 90%; /* Limite para tela */
+            max-height: 80vh; /* Limite vertical para tela */
             height: auto;
-            margin-bottom: 20px;
+            display: block;
+            margin: 10px auto; /* Centralizar */
+            border: 1px solid #ddd;
+            object-fit: contain;
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
             transition: transform 0.3s ease;
-            page-break-inside: avoid;
-            page-break-after: auto;
-            object-fit: contain;
         }
         
         .relatorio-imagem.primeira-imagem {
-            max-height: 60vh;
-            width: auto;
+            width: 100%;
+            max-width: 90%;
+            max-height: 70vh;
+            height: auto;
             display: block;
             margin: 20px auto;
-        }
-        
-        .relatorio-imagem.imagem-pequena {
-            max-height: 40vh;
-            width: auto;
-            display: inline-block;
-            margin: 10px 5px;
-            vertical-align: top;
-        }
-        
-        .relatorio-imagem.imagem-media {
-            max-height: 50vh;
-            width: auto;
-            display: block;
-            margin: 15px auto;
+            border: 1px solid #ddd;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
         }
         
         .container-imagens {
@@ -363,72 +338,16 @@
             });
         }
         
-        // Sistema inteligente de layout para imagens
+        // Sistema simples de layout para imagens
         function organizarImagensInteligente() {
-            const anexosSection = document.querySelector('.anexos-section');
-            if (!anexosSection) return;
+            const imagens = document.querySelectorAll('.relatorio-imagem');
             
-            const imagens = anexosSection.querySelectorAll('.relatorio-imagem');
-            if (imagens.length === 0) return;
-            
-            // Limpar containers existentes
-            imagens.forEach(img => {
-                img.className = 'relatorio-imagem';
-            });
-            
-            // Primeira imagem - sempre sozinha e otimizada
-            if (imagens[0]) {
-                imagens[0].classList.add('primeira-imagem');
-                const container = document.createElement('div');
-                container.className = 'container-imagens';
-                imagens[0].parentNode.insertBefore(container, imagens[0]);
-                container.appendChild(imagens[0]);
-            }
-            
-            // Organizar imagens restantes
-            const imagensRestantes = Array.from(imagens).slice(1);
-            let linhaAtual = null;
-            let imagensPorLinha = 0;
-            const maxImagensPorLinha = 2;
-            
-            imagensRestantes.forEach((img, index) => {
-                // Determinar tamanho da imagem baseado em sua proporção
-                img.onload = function() {
-                    const aspectRatio = this.naturalWidth / this.naturalHeight;
-                    
-                    if (aspectRatio > 1.5) {
-                        // Imagem muito larga - ocupar linha inteira
-                        this.classList.add('imagem-media');
-                        const container = document.createElement('div');
-                        container.className = 'container-imagens';
-                        this.parentNode.insertBefore(container, this);
-                        container.appendChild(this);
-                        linhaAtual = null;
-                        imagensPorLinha = 0;
-                    } else {
-                        // Imagem pode ser agrupada
-                        this.classList.add('imagem-pequena');
-                        
-                        if (!linhaAtual || imagensPorLinha >= maxImagensPorLinha) {
-                            // Criar nova linha
-                            const container = document.createElement('div');
-                            container.className = 'container-imagens';
-                            linhaAtual = document.createElement('div');
-                            linhaAtual.className = 'linha-imagens';
-                            container.appendChild(linhaAtual);
-                            this.parentNode.insertBefore(container, this);
-                            imagensPorLinha = 0;
-                        }
-                        
-                        linhaAtual.appendChild(this);
-                        imagensPorLinha++;
-                    }
-                };
-                
-                // Trigger onload se a imagem já estiver carregada
-                if (img.complete) {
-                    img.onload();
+            imagens.forEach(function(img, index) {
+                // Primeira imagem sempre fica sozinha e preenche o espaço da primeira folha
+                if (index === 0) {
+                    img.classList.add('primeira-imagem');
                 }
+                // Todas as outras imagens seguem o padrão padrão (largura A4 com bordas)
             });
         }
         

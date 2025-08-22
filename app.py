@@ -125,6 +125,23 @@ class Anexo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     filename = db.Column(db.String(200), nullable=False)
     entrada_id = db.Column(db.Integer, db.ForeignKey('entrada.id'), nullable=False)
+    
+    # Campos para posicionamento editado
+    position_left = db.Column(db.Float, nullable=True)
+    position_top = db.Column(db.Float, nullable=True)
+    width = db.Column(db.Float, nullable=True)
+    height = db.Column(db.Float, nullable=True)
+
+class TextoPersonalizado(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    entrada_id = db.Column(db.Integer, db.ForeignKey('entrada.id'), nullable=False)
+    conteudo = db.Column(db.Text, nullable=False)
+    position_left = db.Column(db.Float, nullable=False)
+    position_top = db.Column(db.Float, nullable=False)
+    font_size = db.Column(db.String(10), nullable=True, default='16px')
+    font_family = db.Column(db.String(50), nullable=True, default='Arial')
+    color = db.Column(db.String(20), nullable=True, default='#000000')
+    data_criacao = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
 class Entrada(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -144,8 +161,10 @@ class Entrada(db.Model):
     status = db.Column(db.String(50), nullable=False, default='Não iniciado')
     descricao = db.Column(db.Text, nullable=False)
     observacoes = db.Column(db.Text, nullable=True)
+    observacoes_pedido = db.Column(db.String(200), nullable=True)  # Campo para observações específicas do pedido
     arquivado = db.Column(db.Boolean, default=False, nullable=False)
     anexos = db.relationship('Anexo', backref='entrada', lazy=True, cascade="all, delete-orphan")
+    textos_personalizados = db.relationship('TextoPersonalizado', backref='entrada', lazy=True, cascade="all, delete-orphan")
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -195,7 +214,7 @@ def get_table_data():
             'numero_cliente': numero_cliente,
             'cliente_id': cliente_id,
             'nome_cliente': cliente_nome,
-            'trabalho': pedido.obra,
+            'obra': pedido.obra,
             'status': pedido.status,
             'descricao': pedido.descricao[:50] + '...' if pedido.descricao and len(pedido.descricao) > 50 else pedido.descricao,
             'observacoes': pedido.observacoes,
@@ -214,7 +233,7 @@ def get_table_data():
             'numero_cliente': numero_cliente,
             'cliente_id': cliente_id,
             'nome_cliente': cliente_nome,
-            'trabalho': orcamento.obra,
+            'obra': orcamento.obra,
             'status': orcamento.status,
             'descricao': orcamento.descricao[:50] + '...' if orcamento.descricao and len(orcamento.descricao) > 50 else orcamento.descricao,
             'observacoes': orcamento.observacoes,
@@ -748,7 +767,7 @@ def pedidos_arquivados():
     
     # Aplicar filtro por descrição se especificado
     if search_descricao:
-        base_query = base_query.filter(Entrada.trabalho.ilike(f'%{search_descricao}%'))
+        base_query = base_query.filter(Entrada.obra.ilike(f'%{search_descricao}%'))
     
     # Aplicar filtro por status se especificado
     if filter_status:
@@ -768,7 +787,7 @@ def pedidos_arquivados():
                 )
             )
         if search_descricao:
-            pedidos_query = pedidos_query.filter(Entrada.trabalho.ilike(f'%{search_descricao}%'))
+            pedidos_query = pedidos_query.filter(Entrada.obra.ilike(f'%{search_descricao}%'))
         if filter_status:
             pedidos_query = pedidos_query.filter(Entrada.status == filter_status)
     else:
@@ -788,7 +807,7 @@ def pedidos_arquivados():
                 )
             )
         if search_descricao:
-            orcamentos_query = orcamentos_query.filter(Entrada.trabalho.ilike(f'%{search_descricao}%'))
+            orcamentos_query = orcamentos_query.filter(Entrada.obra.ilike(f'%{search_descricao}%'))
         if filter_status:
             orcamentos_query = orcamentos_query.filter(Entrada.status == filter_status)
     else:
@@ -1567,6 +1586,244 @@ def buscar_clientes():
     # Removemos o "N°: " da formatação da 'label'
     results = [{'id': cliente.id, 'label': f"{cliente.nome} ({cliente.numero_cliente})", 'value': cliente.nome} for cliente in query]
     return jsonify(results)
+
+@app.route('/configurar-relatorio/<int:id>')
+@login_required
+def configurar_relatorio(id):
+    """Página de configuração do relatório - seleção de anexos e dados do cabeçalho."""
+    try:
+        entrada = Entrada.query.get_or_404(id)
+        return render_template('configurar_relatorio.html', entrada=entrada)
+    except Exception as e:
+        flash(f'Erro ao carregar configuração do relatório: {str(e)}', 'danger')
+        return redirect(url_for('painel_controle'))
+
+@app.route('/editar-relatorio/<int:id>', methods=['GET', 'POST'])
+@login_required
+def editar_relatorio(id):
+    """Página de edição visual do relatório com funcionalidades de redimensionamento."""
+    try:
+        entrada = Entrada.query.get_or_404(id)
+        
+        if request.method == 'POST':
+            # Processar dados da configuração
+            anexos_selecionados_ids = request.form.getlist('anexos_selecionados')
+            data_formatada = request.form.get('data_formatada', '')
+            numero_pedido = request.form.get('numero_pedido', '')
+            numero_cliente = request.form.get('numero_cliente', '')
+            nome_cliente = request.form.get('nome_cliente', '')
+            obra = request.form.get('obra', '')
+            observacoes_pedido = request.form.get('observacoes_pedido', '')
+            
+            # Atualizar dados da entrada no banco de dados
+            try:
+                # Converter data formatada para datetime se fornecida
+                if data_formatada:
+                    try:
+                        entrada.data_registro = datetime.strptime(data_formatada, '%d/%m/%Y')
+                    except ValueError:
+                        pass  # Manter data original se conversão falhar
+                
+                # Atualizar campos editáveis
+                if numero_pedido:
+                    entrada.numero_pedido = int(numero_pedido) if numero_pedido.isdigit() else entrada.numero_pedido
+                
+                if obra and obra != 'Não informado':
+                    entrada.obra = obra
+                elif obra == '':
+                    entrada.obra = None
+                
+                # Atualizar nome do cliente temporário se não há cliente vinculado
+                if not entrada.cliente and nome_cliente:
+                    entrada.cliente_nome_temp = nome_cliente
+                
+                # Atualizar observações do pedido (não altera tabela principal)
+                if observacoes_pedido is not None:
+                    entrada.observacoes_pedido = observacoes_pedido
+                
+                # Salvar alterações
+                db.session.commit()
+                flash('Dados do relatório atualizados com sucesso!', 'success')
+                
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Erro ao atualizar dados: {str(e)}', 'danger')
+            
+            # Buscar anexos selecionados
+            anexos_selecionados = []
+            if anexos_selecionados_ids:
+                anexos_selecionados = Anexo.query.filter(Anexo.id.in_(anexos_selecionados_ids)).all()
+            
+            return render_template('editar_relatorio.html',
+                                 entrada=entrada,
+                                 anexos_selecionados=anexos_selecionados,
+                                 data_formatada=data_formatada,
+                                 numero_pedido=numero_pedido,
+                                 numero_cliente=numero_cliente,
+                                 nome_cliente=nome_cliente,
+                                 obra=obra,
+                                 observacoes_pedido=observacoes_pedido)
+        
+        # GET request - redirecionar para configuração
+        return redirect(url_for('configurar_relatorio', id=id))
+        
+    except Exception as e:
+        flash(f'Erro ao carregar editor do relatório: {str(e)}', 'danger')
+        return redirect(url_for('painel_controle'))
+
+@app.route('/salvar-posicoes-anexos', methods=['POST'])
+@login_required
+def salvar_posicoes_anexos():
+    """Salva as posições editadas dos anexos no banco de dados."""
+    try:
+        data = request.get_json()
+        if not data or 'anexos' not in data:
+            return jsonify({'success': False, 'message': 'Dados inválidos'}), 400
+        
+        anexos_data = data['anexos']
+        anexos_atualizados = 0
+        
+        for anexo_data in anexos_data:
+            anexo_id = anexo_data.get('id')
+            if not anexo_id:
+                continue
+                
+            anexo = Anexo.query.get(anexo_id)
+            if anexo:
+                anexo.position_left = anexo_data.get('position_left')
+                anexo.position_top = anexo_data.get('position_top')
+                anexo.width = anexo_data.get('width')
+                anexo.height = anexo_data.get('height')
+                anexos_atualizados += 1
+        
+        if anexos_atualizados > 0:
+            db.session.commit()
+            return jsonify({
+                'success': True, 
+                'message': f'{anexos_atualizados} anexo(s) atualizado(s) com sucesso'
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Nenhum anexo foi atualizado'})
+            
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Erro ao salvar posições: {str(e)}'}), 500
+
+@app.route('/salvar-textos-personalizados', methods=['POST'])
+@login_required
+def salvar_textos_personalizados():
+    """Salva os textos personalizados editados no banco de dados."""
+    try:
+        data = request.get_json()
+        if not data or 'entrada_id' not in data or 'textos' not in data:
+            return jsonify({'success': False, 'message': 'Dados inválidos'}), 400
+        
+        entrada_id = data['entrada_id']
+        textos_data = data['textos']
+        
+        # Verificar se a entrada existe
+        entrada = Entrada.query.get(entrada_id)
+        if not entrada:
+            return jsonify({'success': False, 'message': 'Entrada não encontrada'}), 404
+        
+        # Remover textos existentes para esta entrada
+        TextoPersonalizado.query.filter_by(entrada_id=entrada_id).delete()
+        
+        # Adicionar novos textos
+        textos_salvos = 0
+        for texto_data in textos_data:
+            conteudo = texto_data.get('conteudo')
+            if not conteudo or not conteudo.strip():
+                continue
+                
+            novo_texto = TextoPersonalizado(
+                entrada_id=entrada_id,
+                conteudo=conteudo.strip(),
+                position_left=texto_data.get('position_left', 0),
+                position_top=texto_data.get('position_top', 0),
+                font_size=texto_data.get('font_size', '16px'),
+                font_family=texto_data.get('font_family', 'Arial'),
+                color=texto_data.get('color', '#000000')
+            )
+            db.session.add(novo_texto)
+            textos_salvos += 1
+        
+        if textos_salvos > 0:
+            db.session.commit()
+            return jsonify({
+                'success': True, 
+                'message': f'{textos_salvos} texto(s) salvo(s) com sucesso'
+            })
+        else:
+            return jsonify({'success': False, 'message': 'Nenhum texto válido foi fornecido'})
+            
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Erro ao salvar textos: {str(e)}'}), 500
+
+@app.route('/imprimir-relatorio/<int:id>')
+@login_required
+def imprimir_relatorio(id):
+    """Página de impressão/PDF do relatório com layout otimizado."""
+    try:
+        entrada = Entrada.query.get_or_404(id)
+        
+        # Preparar dados para impressão
+        imagens_anexos = []
+        for anexo in entrada.anexos:
+            anexo_data = {
+                'id': anexo.id,
+                'caminho': url_for('uploaded_file', filename=anexo.filename),
+                'nome': anexo.filename
+            }
+            
+            # Incluir posições salvas se existirem
+            if anexo.position_left is not None:
+                anexo_data['position_left'] = anexo.position_left
+            if anexo.position_top is not None:
+                anexo_data['position_top'] = anexo.position_top
+            if anexo.width is not None:
+                anexo_data['width'] = anexo.width
+            if anexo.height is not None:
+                anexo_data['height'] = anexo.height
+                
+            imagens_anexos.append(anexo_data)
+        
+        # Preparar textos personalizados salvos
+        textos_personalizados = []
+        for texto in entrada.textos_personalizados:
+            texto_data = {
+                'id': texto.id,
+                'conteudo': texto.conteudo,
+                'position_left': texto.position_left,
+                'position_top': texto.position_top,
+                'font_size': texto.font_size,
+                'font_family': texto.font_family,
+                'color': texto.color
+            }
+            textos_personalizados.append(texto_data)
+        
+        relatorio_data = {
+            'id': entrada.id,
+            'numero_pedido': entrada.numero_pedido,
+            'numero_cliente': entrada.cliente.numero_cliente if entrada.cliente else '',
+            'cliente': entrada.cliente_nome_temp or (entrada.cliente.nome if entrada.cliente else ''),
+            'obra': entrada.obra or '',
+            'endereco': entrada.descricao or '',
+            'telefone': request.args.get('telefone', ''),
+            'servico_executado': request.args.get('servico_executado', ''),
+            'observacoes': entrada.observacoes or '',
+            'observacoes_pedido': entrada.observacoes_pedido or '',
+            'data_formatada': entrada.data_registro.strftime('%d/%m/%Y') if entrada.data_registro else '',
+            'imagens': imagens_anexos,  # Lista de imagens dos anexos
+            'textos_personalizados': textos_personalizados  # Lista de textos personalizados com posições
+        }
+        
+        return render_template('imprimir_relatorio.html', relatorio=relatorio_data)
+        
+    except Exception as e:
+        flash(f'Erro ao carregar página de impressão: {str(e)}', 'danger')
+        return redirect(url_for('painel_controle'))
 
 # @app.cli.command("init-db")
 # def init_db_command():
